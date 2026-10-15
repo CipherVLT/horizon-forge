@@ -1,7 +1,0 @@
-cosign.key
-_build_*
-output
-_build-*/**
-*_chunkah_*
-*_rpm-ostree_*
-disk_config/iso.built.toml
