@@ -1,0 +1,14 @@
+[Unit]
+Description=Write the Bazzite Horizon systemd-boot menu entry
+DefaultDependencies=no
+After=local-fs.target ostree-finalize-staged.service
+Before=shutdown.target umount.target
+ConditionPathIsMountPoint=/boot/efi
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/bazzite-horizon-sdboot-sync
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=shutdown.target

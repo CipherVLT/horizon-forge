@@ -67,21 +67,78 @@ sudo bootc switch ghcr.io/YOUR_GITHUB_USER/bazzite-horizon-nvidia:latest
 
 Switch only between images that match the GPU. An NVIDIA image on an AMD box, or the reverse, will not come up cleanly.
 
+That command is the install if the machine already runs Bazzite or any other bootc image. No USB. No installer. Reboot when it asks.
+
+A blank disk is the only reason to build an ISO. The USB uses Fedora's installer, Anaconda, once, and only to copy this same bootc image onto the disk. You do not configure Anaconda. The kickstart runs `bootc switch` at the end of the copy, so the installed system tracks the GitHub image. After the first boot, updates are `sudo bootc upgrade`. Anaconda is not part of the running system.
+
 ## ISO
 
-After the container workflow has pushed the tag you want:
+Do not download a Bazzite ISO from the website. The KDE and GNOME files there are finished stock installers. This recipe does not remaster them. It starts from the Bazzite **container** (`bazzite:stable` or `bazzite-nvidia-open:stable`). Plasma is already inside that container, so there is no "pick KDE" step.
 
-1. Actions → **Build disk images** → Run workflow.
-2. Pick `bazzite-horizon` or `bazzite-horizon-nvidia`. Leave platform on `amd64` unless you know you want the arm runner.
-3. Download the `anaconda-iso` artifact. The workflow rewrites `GHCR_IMAGE` in `disk_config/iso.toml` to the tag you picked, then bootc-image-builder makes the installer.
+You cook one of two installers:
 
-The ISO is an installer, not a live desktop. Boot it, install, then choose **Event Horizon** at the login screen.
+| You are installing on | Workflow choice | `just cook-iso` | Menu title after install |
+| --- | --- | --- | --- |
+| AMD or Intel | `bazzite-horizon` | `just cook-iso amd` | Bazzite Horizon |
+| NVIDIA, including a 5070 Ti | `bazzite-horizon-nvidia` | `just cook-iso nvidia` | Bazzite Horizon NVIDIA |
+
+The USB stick that boots the installer still shows GRUB. That is the ISO's own menu, not the bootloader that lands on the disk. `bootloader --sdboot` plus `/usr/libexec/bazzite-horizon-sdboot-sync` write a systemd-boot entry onto the EFI partition of the installed system. The entry is titled from the table above. ostree keeps the kernel on `/boot`, which systemd-boot cannot read, so the script copies the kernel and initrd onto the ESP. It runs again after later updates.
+
+Secure Boot has to be off. This path does not use Bazzite's shim. BIOS machines cannot boot systemd-boot. qcow2 and raw images skip Anaconda, so they stay on GRUB.
+
+### GitHub (this is the one that saves time)
+
+1. Download the recipe (or clone this repo). Create a new GitHub repository and push these files. Turn Actions on.
+2. Set `REPO_ORGANIZATION` in `image-template.env` to that GitHub account. That value is only an OCI label. The registry path is `ghcr.io/<the account that owns the repo>/…`.
+3. Optional: `COSIGN_PASSWORD="" cosign generate-key-pair`, then store `cosign.key` as the Actions secret `SIGNING_SECRET`. Do not commit the private key. Without the secret the image still publishes.
+4. Push to `main`. Wait until **Build container image** is green. The first run pulls Bazzite and compiles Event Horizon twice, once per GPU variant.
+5. Actions → **Build disk images** → Run workflow. Pick the variant from the table. Leave platform on `amd64`.
+6. Download the artifact `anaconda-iso-<variant>`. Unzip it. The installer is `install.iso`.
+7. Flash the USB with Fedora Media Writer or KDE ISO Image Writer. From a shell, after you have identified the USB and not the system disk:
+
+```bash
+sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
+```
+
+8. Firmware: UEFI, Secure Boot off. Boot the USB, install, and give the EFI partition about 2 GiB if the disk editor lets you. The kernel and initrd are copied there.
+9. Reboot. systemd-boot should list **Bazzite Horizon** or **Bazzite Horizon NVIDIA**. If the first reboot is still GRUB, boot once and reboot again. The sync service writes the entry as soon as the ostree menu file exists.
+10. At the login screen, open the session menu and choose **Event Horizon**. Plasma is still in that list.
+
+### This computer
+
+Same ISO, compiled here. You need `podman`, `git`, and `just`, and about 80 GiB free for a local compile. Set `REPO_ORGANIZATION` first. The kickstart retargets the installed system at `ghcr.io/<you>/<tag>:latest`, so that tag has to exist before you boot the USB.
+
+```bash
+sudo pacman -S --needed podman git just
+
+# NVIDIA (5070 Ti and other recent GeForce)
+just cook-iso nvidia
+podman login ghcr.io
+podman push localhost/bazzite-horizon-nvidia:latest \
+  ghcr.io/YOUR_GITHUB_USER/bazzite-horizon-nvidia:latest
+
+# AMD / Intel
+just cook-iso amd
+podman push localhost/bazzite-horizon:latest \
+  ghcr.io/YOUR_GITHUB_USER/bazzite-horizon:latest
+```
+
+If GitHub has already published the tag and you only want the ISO built locally, skip the compile:
+
+```bash
+just cook-iso nvidia pull
+just cook-iso amd pull
+```
+
+`just cook-iso` writes `disk_config/iso.built.toml` (the kickstart with your registry tag filled in) and runs bootc-image-builder as `--type anaconda-iso`. The upstream `just build-iso` name still uses the short type `iso`, which does not apply this kickstart. Use `just cook-iso`.
+
+The ISO lands under `output/` as `install.iso`. Flash it the same way as the GitHub artifact.
 
 ## Bump Event Horizon
 
 `build_files/event-horizon.ref` is one commit hash, currently `696be1a855a2c682e15765a92cc189f1f8de84be` (0.9.7.3-beta-3 era). Replace the hash and push. The builder fetches that commit and its submodules (the Inter font submodule is required; a non-recursive clone fails the way Fedora.md describes).
 
-## Local build
+## Local container only
 
 From a machine with podman, and this directory as a git checkout (the Justfile skips some labels when the tree is dirty):
 
@@ -90,6 +147,8 @@ From a machine with podman, and this directory as a git checkout (the Justfile s
 just build
 BASE_IMAGE=ghcr.io/ublue-os/bazzite-nvidia-open:stable just build bazzite-horizon-nvidia latest
 ```
+
+That publishes nothing and does not write an ISO. For the installer, use `just cook-iso` above.
 
 ## License
 

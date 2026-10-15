@@ -30,10 +30,31 @@ const keys = [
   ["Super + 1–9", "workspace"],
 ];
 
+const cookSteps = {
+  nvidia: {
+    tag: "bazzite-horizon-nvidia",
+    menu: "Bazzite Horizon NVIDIA",
+    cook: "just cook-iso nvidia",
+    pull: "just cook-iso nvidia pull",
+    push: "podman push localhost/bazzite-horizon-nvidia:latest ghcr.io/YOUR_GITHUB_USER/bazzite-horizon-nvidia:latest",
+    switchCmd: "sudo bootc switch ghcr.io/YOUR_GITHUB_USER/bazzite-horizon-nvidia:latest",
+  },
+  amd: {
+    tag: "bazzite-horizon",
+    menu: "Bazzite Horizon",
+    cook: "just cook-iso amd",
+    pull: "just cook-iso amd pull",
+    push: "podman push localhost/bazzite-horizon:latest ghcr.io/YOUR_GITHUB_USER/bazzite-horizon:latest",
+    switchCmd: "sudo bootc switch ghcr.io/YOUR_GITHUB_USER/bazzite-horizon:latest",
+  },
+} as const;
+
 export function Forge() {
   const [active, setActive] = useState(recipeFiles[0].id);
   const [copied, setCopied] = useState(false);
+  const [gpu, setGpu] = useState<keyof typeof cookSteps>("nvidia");
   const file = recipeFiles.find((item) => item.id === active) ?? recipeFiles[0];
+  const cook = cookSteps[gpu];
 
   async function copyFile() {
     try {
@@ -188,6 +209,124 @@ export function Forge() {
       </section>
 
       <section className="flex flex-col gap-4">
+        <h2 className="font-display text-3xl text-fg">Still bootc</h2>
+        <p className="text-sm text-muted">
+          The system you boot every day is a bootc image, the same kind Bazzite already is.
+          Pick the GPU once. That choice is the only difference between the two commands.
+        </p>
+        <div className="flex gap-2" role="tablist" aria-label="Which GPU the ISO is for">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={gpu === "nvidia"}
+            onClick={() => setGpu("nvidia")}
+            className={
+              gpu === "nvidia"
+                ? "min-h-11 rounded-card bg-accent px-4 text-sm font-medium text-accent-ink"
+                : "min-h-11 rounded-card border border-line bg-surface px-4 text-sm text-muted"
+            }
+          >
+            NVIDIA
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={gpu === "amd"}
+            onClick={() => setGpu("amd")}
+            className={
+              gpu === "amd"
+                ? "min-h-11 rounded-card bg-accent px-4 text-sm font-medium text-accent-ink"
+                : "min-h-11 rounded-card border border-line bg-surface px-4 text-sm text-muted"
+            }
+          >
+            AMD / Intel
+          </button>
+        </div>
+        <article className="flex flex-col gap-2 rounded-card border border-line bg-surface p-5">
+          <h3 className="font-medium text-fg">Already on Bazzite, or any bootc system</h3>
+          <p className="text-sm text-muted">
+            This is the whole install. No USB, no ISO, no installer. Reboot when it tells you to.
+            Do not run the other GPU's command.
+          </p>
+          <p className="break-all font-mono text-xs text-fg">{cook.switchCmd}</p>
+        </article>
+        <article className="flex flex-col gap-2 rounded-card border border-line bg-surface p-5">
+          <h3 className="font-medium text-fg">Blank disk, so you need a USB</h3>
+          <p className="text-sm text-muted">
+            The USB uses Fedora's installer once, only to copy this same bootc image onto the
+            disk. That installer is named Anaconda. It is not the operating system, and you
+            do not configure it. When the copy finishes it runs bootc switch for you, so the
+            disk tracks your GitHub image. After that, updates are:
+          </p>
+          <p className="font-mono text-xs text-fg">sudo bootc upgrade</p>
+        </article>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="font-display text-3xl text-fg">Cook the ISO</h2>
+        <p className="text-sm text-muted">
+          Skip this section if the machine already runs Bazzite. Do not download a Bazzite
+          ISO from the website. Those are stock installers. This recipe starts from the
+          Bazzite container, which already includes Plasma.
+        </p>
+        <ol className="flex flex-col gap-4">
+          <li className="flex gap-3">
+            <span className="font-mono text-sm text-accent">1</span>
+            <p className="text-sm text-muted">
+              Download the recipe. New GitHub repository, push the files, turn Actions on.
+              Set REPO_ORGANIZATION in image-template.env to that account.
+            </p>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-sm text-accent">2</span>
+            <p className="text-sm text-muted">
+              Push to main and wait until Build container image is green. It compiles the
+              shell twice, once for each GPU.
+            </p>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-sm text-accent">3</span>
+            <p className="text-sm text-muted">
+              Actions, Build disk images, Run workflow. Choose{" "}
+              <span className="font-mono text-xs text-fg">{cook.tag}</span>. Leave the
+              platform on amd64. Download the anaconda-iso artifact and unzip install.iso.
+            </p>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-sm text-accent">4</span>
+            <p className="text-sm text-muted">
+              Flash the USB with Fedora Media Writer or KDE ISO Image Writer. On Arch,
+              point dd at the USB, not the system disk.
+            </p>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-sm text-accent">5</span>
+            <p className="text-sm text-muted">
+              Firmware: UEFI, Secure Boot off. The USB menu is still GRUB. That is only
+              the installer. After install, systemd-boot lists{" "}
+              <span className="text-fg">{cook.menu}</span>. If the first reboot is still
+              GRUB, boot once and reboot. Then pick Event Horizon at the login screen.
+              Give the EFI partition about 2 GiB if the disk editor lets you.
+            </p>
+          </li>
+        </ol>
+        <div className="rounded-card border border-line bg-surface p-5 font-mono text-xs leading-relaxed text-fg">
+          <p className="text-muted">
+            On this computer, from the recipe folder, instead of the disk-image workflow:
+          </p>
+          <p className="mt-2">{cook.cook}</p>
+          <p className="mt-2 break-all">{cook.push}</p>
+          <p className="mt-2 text-muted">If the container is already on ghcr, skip the compile:</p>
+          <p className="mt-2">{cook.pull}</p>
+        </div>
+        <p className="text-sm text-muted">
+          Push the tag before you boot the USB. The installer retargets the disk at that
+          registry image, and it stops if the tag is missing. just cook-iso is the command
+          that applies the systemd-boot kickstart. The older just build-iso name does not.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-4">
         <h2 className="font-display text-3xl text-fg">Publish</h2>
         <ol className="flex flex-col gap-4">
           <li className="flex gap-3">
@@ -208,9 +347,9 @@ export function Forge() {
           <li className="flex gap-3">
             <span className="font-mono text-sm text-accent">3</span>
             <p className="text-sm text-muted">
-              On a machine already running a bootc image, switch to the tag that matches the
-              GPU. Or run the disk-image workflow and install from the ISO, then pick Event
-              Horizon at the login screen.
+              On a machine already running Bazzite, run the bootc switch command above and
+              reboot. Use the ISO only for a blank disk. Then pick Event Horizon at the
+              login screen. Later updates are sudo bootc upgrade.
             </p>
           </li>
         </ol>

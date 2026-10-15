@@ -1,11 +1,26 @@
 # bootc-image-builder config for the Anaconda ISO.
 # Build disk images workflow replaces GHCR_IMAGE with the variant you pick
 # (bazzite-horizon or bazzite-horizon-nvidia) before the installer is built.
+# `just cook-iso` does the same replacement locally.
+#
+# bootloader --sdboot tells Fedora 44 Anaconda to install systemd-boot on the
+# new UEFI disk. The %post script then copies the ostree kernel into a real
+# Boot Loader Specification entry on the ESP (see
+# /usr/libexec/bazzite-horizon-sdboot-sync). Without that copy, systemd-boot
+# has no menu line, because it cannot read the kernel off the btrfs root.
+#
+# The USB stick that boots the installer is still GRUB. That menu is the ISO's
+# El Torito image, not the bootloader that lands on disk.
+# UEFI only. BIOS cannot use systemd-boot. Secure Boot has to be off: this
+# path does not go through Bazzite's shim.
 
 [customizations.installer.kickstart]
 contents = """
-%post
+bootloader --sdboot
+
+%post --erroronfail
 bootc switch --mutate-in-place --transport registry GHCR_IMAGE
+/usr/libexec/bazzite-horizon-sdboot-sync
 %end
 """
 

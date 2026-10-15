@@ -354,6 +354,14 @@ build-raw $target_image=("localhost/" + image_name) $tag=default_tag: && (_build
 [group('Build Virtal Machine Image')]
 build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "iso" "disk_config/iso.toml")
 
+# Cook an Anaconda ISO on this machine. variant is amd or nvidia.
+# mode is build (compile here) or pull (use the image already on ghcr).
+[group('Build Virtal Machine Image')]
+cook-iso variant="nvidia" mode="build":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash cook-iso.sh "{{ variant }}" "{{ mode }}"
+
 # Rebuild a QCOW2 virtual machine image
 [group('Build Virtal Machine Image')]
 rebuild-qcow2 $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "qcow2" "disk_config/disk.toml")

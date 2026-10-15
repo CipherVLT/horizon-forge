@@ -11,3 +11,8 @@ misbehaves.
 
 First login copies /usr/share/event-horizon/skel into ~/.config only when
 those files are missing.
+
+The ISO installer writes a systemd-boot menu entry titled from boot-title
+("Bazzite Horizon" or "Bazzite Horizon NVIDIA"). The USB's own menu is still
+GRUB. Secure Boot has to be off. qcow2 and raw disks stay on GRUB.
+

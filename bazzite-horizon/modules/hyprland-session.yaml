@@ -1,6 +1,8 @@
 description: >
   Wayland session Event Horizon can attach to. Bazzite's Plasma desktop
-  stays installed; this only adds Hyprland and a login entry.
+  stays installed; this only adds Hyprland and a login entry. systemd-boot
+  is the EFI package. The ISO kickstart writes the menu entry; this module
+  does not remove GRUB from qcow2 or raw images.
 
 packages:
   - hyprland
@@ -13,8 +15,11 @@ packages:
   - brightnessctl
   - kitty
   - fuzzel
+  - systemd-boot
 
 files:
   - usr/bin/event-horizon-session
   - usr/share/wayland-sessions/event-horizon.desktop
   - usr/share/event-horizon/skel
+  - usr/libexec/bazzite-horizon-sdboot-sync
+  - usr/lib/systemd/system/bazzite-horizon-sdboot-sync.service
