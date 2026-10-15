@@ -1,0 +1,44 @@
+description: >
+  ryzendew Event Horizon Shell, built from the pinned commit in
+  build_files/event-horizon.ref. Fedora.md's package list, revised:
+  portable meson flags (-Dnative_march=false), JPEG on, JXL off,
+  toolchain kept out of the final image.
+
+depends:
+  - hyprland-session
+
+packages:
+  - libjpeg-turbo
+  - vulkan-loader
+  - cairo
+  - pango
+  - freetype
+  - fontconfig
+  - libxkbcommon
+  - glib2
+  - sdbus-cpp
+  - pipewire
+  - pam
+  - polkit
+  - libcurl
+  - openssl
+  - libwebp
+  - libpng
+  - lz4
+  - libdrm
+  - librsvg2
+  - ffmpegthumbnailer
+  - jemalloc
+  - lcms2
+  - libarchive
+  - poppler-glib
+  - wayland
+  - hicolor-icon-theme
+  - adwaita-icon-theme
+
+scripts:
+  post: |
+    # Implemented by build_files/build-event-horizon.sh in the image build.
+    # Do not duplicate that compile here.
+    test -x /usr/bin/EventHorizon
+    EventHorizon --version

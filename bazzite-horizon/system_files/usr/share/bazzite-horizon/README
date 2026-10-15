@@ -1,0 +1,13 @@
+Bazzite Horizon
+===============
+
+Bazzite, plus a Hyprland login session named Event Horizon.
+The shell binary is ryzendew's Event Horizon, built from the commit in
+event-horizon.ref with -Dnative_march=false.
+
+Plasma is still on the image. At the login screen, open the session menu
+and choose Event Horizon. KDE remains available if the Hyprland session
+misbehaves.
+
+First login copies /usr/share/event-horizon/skel into ~/.config only when
+those files are missing.

@@ -1,0 +1,21 @@
+# Declarative view of this image, in the shape theblackdon's dcli-bootc uses
+# (profile + base_images + modules). KineticOS / KineticWE is his desktop.
+# This profile keeps Bazzite and swaps the shell for Event Horizon.
+#
+# GitHub Actions does not run `dcli-bootc gen`. The files it builds are
+# Containerfile and build_files/*.sh. Running gen in this checkout would
+# overwrite those. Treat this YAML as the readable spec.
+
+name: bazzite-horizon
+base_image: ghcr.io/ublue-os/bazzite:stable
+default_tag: latest
+package_manager: dnf
+
+base_images:
+  # Open kernel module. This is the one for RTX 50-series (5070 Ti) and
+  # recent GeForce laptops. It is not bazzite-nvidia (legacy proprietary).
+  nvidia: ghcr.io/ublue-os/bazzite-nvidia-open:stable
+
+enabled_modules:
+  - hyprland-session
+  - event-horizon

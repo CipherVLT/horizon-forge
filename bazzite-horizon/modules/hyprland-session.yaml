@@ -1,0 +1,20 @@
+description: >
+  Wayland session Event Horizon can attach to. Bazzite's Plasma desktop
+  stays installed; this only adds Hyprland and a login entry.
+
+packages:
+  - hyprland
+  - xdg-desktop-portal
+  - xdg-desktop-portal-hyprland
+  - xdg-desktop-portal-gtk
+  - grim
+  - slurp
+  - wl-clipboard
+  - brightnessctl
+  - kitty
+  - fuzzel
+
+files:
+  - usr/bin/event-horizon-session
+  - usr/share/wayland-sessions/event-horizon.desktop
+  - usr/share/event-horizon/skel
