@@ -34,7 +34,6 @@ dnf5 install -y \
     pipewire \
     pam \
     polkit \
-    libcurl \
     openssl \
     libwebp \
     libpng \
@@ -46,7 +45,6 @@ dnf5 install -y \
     lcms2 \
     libarchive \
     poppler-glib \
-    wayland \
     hicolor-icon-theme \
     adwaita-icon-theme \
     systemd-boot
