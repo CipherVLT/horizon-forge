@@ -3,11 +3,12 @@
 # throwaway stage so the compiler toolchain does not land in the image.
 # BASE_IMAGE selects the Bazzite variant (AMD/Intel or NVIDIA open).
 
+ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite:stable
+
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 
-ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite:stable
 
 FROM ${BASE_IMAGE} AS eh-builder
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
