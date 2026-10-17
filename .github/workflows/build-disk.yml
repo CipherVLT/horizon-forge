@@ -100,11 +100,12 @@ jobs:
           echo "$GH_TOKEN" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           sudo podman pull "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}"
           sudo podman pull "${BIB_IMAGE}"
+          sudo mount --make-rshared /
           CONFIG="./disk_config/disk.toml"
           if [[ "${DISK_TYPE}" == "anaconda-iso" ]]; then
             CONFIG="./disk_config/iso.toml"
           fi
-          sudo podman run --rm --privileged --security-opt label=type:unconfined_t \
+          sudo podman run --rm --privileged --security-opt label=disable --security-opt apparmor=unconfined --security-opt seccomp=unconfined \
             --volume /var/lib/containers/storage:/var/lib/containers/storage \
             --volume "$PWD/output:/output" \
             --volume "$PWD/${CONFIG}:/config.toml:ro" \
