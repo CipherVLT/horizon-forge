@@ -132,4 +132,8 @@ if [[ -e /usr/lib/systemd/system/systemd-boot-update.service ]]; then
 fi
 enable_unit bazzite-horizon-sdboot-sync.service
 
+# The ISO builder depsolves outside the image. Terra file key
+# exists in the image but not in that builder.
+sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' /etc/yum.repos.d/*.repo
+
 dnf5 clean all
