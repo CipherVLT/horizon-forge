@@ -43,7 +43,7 @@ concurrency:
 jobs:
   build:
     name: Build disk images
-    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
+    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     strategy:
       fail-fast: false
       matrix:
@@ -100,6 +100,7 @@ jobs:
           echo "$GH_TOKEN" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           sudo podman pull "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}"
           sudo podman pull "${BIB_IMAGE}"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           sudo mount --make-rshared /
           CONFIG="./disk_config/disk.toml"
           if [[ "${DISK_TYPE}" == "anaconda-iso" ]]; then
