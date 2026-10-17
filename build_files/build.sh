@@ -8,9 +8,19 @@ cp -avf /ctx/system_files/. /
 chmod 0755 /usr/bin/event-horizon-session
 chmod 0755 /usr/libexec/bazzite-horizon-sdboot-sync
 
+
+install -d /etc/skel/.config/hypr/eh
+cp /usr/share/event-horizon/skel/hypr/hyprland.conf /etc/skel/.config/hypr/hyprland.conf
+cp /usr/share/event-horizon/skel/hypr/eh/colors.conf /etc/skel/.config/hypr/eh/colors.conf
+
+if ! dnf5 copr --help >/dev/null 2>&1; then
+    dnf5 install -y dnf5-plugins
+fi
+dnf5 copr enable -y nett00n/hyprland
+
+
 # Runtime packages only. Build dependencies stayed in the eh-builder stage.
 # Names follow Event Horizon's Fedora.md (F43+) plus the Hyprland session
-# that page says the shell has to run inside.
 dnf5 install -y \
     hyprland \
     xdg-desktop-portal \
@@ -48,6 +58,9 @@ dnf5 install -y \
     hicolor-icon-theme \
     adwaita-icon-theme \
     systemd-boot
+
+dnf5 copr disable -y nett00n/hyprland || true
+rm -f /etc/yum.repos.d/*nett00n*hyprland*.repo
 
 if [[ ! -d /ehroot/usr ]]; then
     echo "eh-builder did not stage /ehroot" >&2
