@@ -113,6 +113,7 @@ jobs:
             --output /output \
             --chown "${USER_UID}:${USER_GID}" \
             --use-librepo=True \
+            --rootfs btrfs \
             --type "${DISK_TYPE}" \
             "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}"
           echo "output-directory=output" >> "$GITHUB_OUTPUT"
