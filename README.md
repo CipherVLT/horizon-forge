@@ -81,6 +81,9 @@ You cook one of two installers:
 | --- | --- | --- | --- |
 | AMD or Intel | `bazzite-horizon` | `just cook-iso amd` | Bazzite Horizon |
 | NVIDIA, including a 5070 Ti | `bazzite-horizon-nvidia` | `just cook-iso nvidia` | Bazzite Horizon NVIDIA |
+| Laptop with Intel/AMD iGPU + NVIDIA (ROG, Legion, …) | `bazzite-horizon-nvidia` | `just cook-iso nvidia` | Bazzite Horizon NVIDIA |
+
+On a hybrid laptop the session script detects both GPUs at login and writes `~/.config/hypr/eh/gpu.conf` so Hyprland renders on the integrated GPU and leaves the NVIDIA card for games. Nothing to configure by hand.
 
 The USB stick that boots the installer shows GRUB. That is the ISO's own menu, not the bootloader that lands on the disk.
 
@@ -94,6 +97,7 @@ Secure Boot has to be off for the systemd-boot entry; GRUB boots through Bazzite
 2. Set `REPO_ORGANIZATION` in `image-template.env` to that GitHub account. That value is only an OCI label. The registry path is `ghcr.io/<the account that owns the repo>/…`.
 3. Optional: `COSIGN_PASSWORD="" cosign generate-key-pair`, then store `cosign.key` as the Actions secret `SIGNING_SECRET`. Do not commit the private key. Without the secret the image still publishes.
 4. Push to `main`. Wait until **Build container image** is green. The first run pulls Bazzite and compiles Event Horizon twice, once per GPU variant.
+   Then make both packages **public**: GitHub → your profile → Packages → `bazzite-horizon` → Package settings → Change visibility → Public, and the same for `bazzite-horizon-nvidia`. A package pushed by Actions starts private, and installed systems pull updates anonymously, so a private package makes `bootc upgrade` and Bazzite's updater fail after install.
 5. Actions → **Build disk images** → Run workflow. Pick the variant from the table. Leave platform on `amd64`.
 6. Download the artifact `anaconda-iso-<variant>`. Unzip it. The installer is `install.iso`.
 7. Flash the USB with Fedora Media Writer or KDE ISO Image Writer. From a shell, after you have identified the USB and not the system disk:
