@@ -18,9 +18,24 @@
 contents = """
 bootloader --sdboot
 
-%post --erroronfail
+# --log lands in the installed system (chrooted path) so a bad first boot
+# can be diagnosed from a rescue shell: mount the root subvolume and read
+# /root/horizon-post.log (/var/roothome/horizon-post.log on ostree).
+%post --erroronfail --log=/root/horizon-post.log
+set -x
 bootc switch --mutate-in-place --transport registry GHCR_IMAGE
+
+# Snapshot the boot state before and after the sync so the log shows what
+# ostree wrote and what ended up on the ESP.
+findmnt -no SOURCE,FSTYPE,OPTIONS / /boot /boot/efi /sysroot || true
+ls -l /boot/loader || true
+cat /boot/loader/entries/*.conf || true
+ls -d /sysroot/ostree/boot.*/*/*/* || true
+
 /usr/libexec/bazzite-horizon-sdboot-sync
+
+cat /boot/efi/loader/loader.conf /boot/efi/loader/entries/*.conf || true
+bootctl --esp-path=/boot/efi status || true
 %end
 """
 

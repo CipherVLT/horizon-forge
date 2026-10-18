@@ -9,18 +9,32 @@
 # The Anaconda ISO calls this from its kickstart. The systemd unit calls it
 # again on boot and on shutdown, after ostree has staged an update, so the
 # menu does not keep an old kernel.
+#
+# This script refuses to write an entry it cannot prove will boot. A wrong
+# entry on the ESP is worse than no entry, because systemd-boot is first in
+# the firmware boot order and the user lands in dracut emergency mode. The
+# checks are:
+#   * the options line carries root=
+#   * when the root filesystem is a btrfs subvolume, the options line carries
+#     rootflags=subvol= (added here if ostree/Anaconda left it out)
+#   * the ostree= path named in the options line exists on the physical root
+#     (/sysroot), so the entry matches the deployment that is really on disk
+# Any of these failing exits non-zero, which aborts the kickstart %post
+# (--erroronfail) instead of producing a disk that cannot boot.
 set -euo pipefail
+
+log() { echo "bazzite-horizon: $*" >&2; }
 
 esp=/boot/efi
 if [[ ! -d "$esp" ]]; then
-    echo "bazzite-horizon: no ESP at ${esp}, skipping systemd-boot entry" >&2
+    log "no ESP at ${esp}, skipping systemd-boot entry"
     exit 0
 fi
 
 shopt -s nullglob
 mapfile -t entries < <(ls -1t /boot/loader/entries/*.conf 2>/dev/null || true)
 if [[ ${#entries[@]} -eq 0 ]]; then
-    echo "bazzite-horizon: no ostree boot entry yet, will retry next boot" >&2
+    log "no ostree boot entry yet, will retry next boot"
     exit 0
 fi
 
@@ -29,6 +43,31 @@ if [[ -z "${title}" ]]; then
     title=$(sed -n 's/^BOOTLOADER_NAME=//p' /usr/lib/os-release 2>/dev/null | head -n 1 | tr -d '"')
 fi
 title=${title:-Bazzite Horizon}
+
+# Where the physical root (the filesystem that holds /ostree) is visible.
+# On a booted ostree system that is /sysroot. Inside the Anaconda %post
+# chroot it is also /sysroot (Anaconda bind-mounts it there). Fall back to /
+# so a plain container build still gets a sensible answer.
+physroot=/
+if [[ -d /sysroot/ostree ]]; then
+    physroot=/sysroot
+fi
+
+# Return "subvol name" when $physroot sits on a btrfs subvolume, else nothing.
+root_subvol() {
+    local fstype opts subvol
+    fstype=$(findmnt -no FSTYPE -T "$physroot" 2>/dev/null || true)
+    [[ "$fstype" == "btrfs" ]] || return 0
+    opts=$(findmnt -no OPTIONS -T "$physroot" 2>/dev/null || true)
+    subvol=$(tr ',' '\n' <<<"$opts" | sed -n 's/^subvol=//p' | head -n 1)
+    # findmnt reports the subvolume as a path (/root). The kernel wants the
+    # bare name relative to the top level (root).
+    subvol=${subvol#/}
+    # A bind mount of a deployment reports subvol=/root/ostree/deploy/... ;
+    # keep only the top-level subvolume.
+    subvol=${subvol%%/*}
+    printf '%s\n' "$subvol"
+}
 
 resolve_boot_file() {
     local rel=$1
@@ -43,25 +82,58 @@ resolve_boot_file() {
     return 1
 }
 
+# Validate (and if needed repair) the kernel options line copied from ostree.
+# Prints the final options line.
+check_options() {
+    local opts=$1 src=$2 subvol ostree_path
+
+    if ! grep -Eq '(^|[[:space:]])root=' <<<"$opts"; then
+        log "${src}: options line has no root= argument, refusing to write a systemd-boot entry"
+        log "options were: ${opts}"
+        return 1
+    fi
+
+    subvol=$(root_subvol)
+    if [[ -n "$subvol" ]] && ! grep -Eq '(^|[[:space:]])rootflags=' <<<"$opts"; then
+        log "${src}: root is btrfs subvolume '${subvol}' but options lack rootflags=; adding rootflags=subvol=${subvol}"
+        opts="${opts} rootflags=subvol=${subvol}"
+    fi
+
+    ostree_path=$(tr ' ' '\n' <<<"$opts" | sed -n 's/^ostree=//p' | head -n 1)
+    if [[ -z "$ostree_path" ]]; then
+        log "${src}: options line has no ostree= argument, refusing to write a systemd-boot entry"
+        return 1
+    fi
+    if [[ "$physroot" == /sysroot && ! -e "/sysroot${ostree_path}" ]]; then
+        log "${src}: ostree=${ostree_path} does not exist under /sysroot; this entry does not match the deployment on disk"
+        log "deployments present: $(ls -d /sysroot/ostree/boot.*/*/*/* 2>/dev/null | tr '\n' ' ')"
+        return 1
+    fi
+
+    printf '%s\n' "$opts"
+}
+
 write_entry() {
     local src=$1 dest=$2 menutitle=$3
-    local linux initrd opts version src_linux src_initrd
+    local linux initrd opts version src_linux src_initrd tmp
     linux=$(awk '$1 == "linux" { print $2; exit }' "$src")
     initrd=$(awk '$1 == "initrd" { print $2; exit }' "$src")
     version=$(awk '$1 == "version" { print $2; exit }' "$src")
     opts=$(awk '$1 == "options" { sub(/^options[[:space:]]+/, ""); print; exit }' "$src")
     if [[ -z "${linux}" || -z "${opts}" ]]; then
-        echo "bazzite-horizon: ${src} has no linux/options" >&2
+        log "${src} has no linux/options"
         return 1
     fi
+    opts=$(check_options "$opts" "$src") || return 1
+
     src_linux=$(resolve_boot_file "$linux") || {
-        echo "bazzite-horizon: kernel ${linux} from ${src} is not on /boot" >&2
+        log "kernel ${linux} from ${src} is not on /boot"
         return 1
     }
     src_initrd=""
     if [[ -n "${initrd}" ]]; then
         src_initrd=$(resolve_boot_file "$initrd") || {
-            echo "bazzite-horizon: initrd ${initrd} from ${src} is not on /boot" >&2
+            log "initrd ${initrd} from ${src} is not on /boot"
             return 1
         }
     fi
@@ -72,6 +144,9 @@ write_entry() {
         install -m 0644 "$src_initrd" "${esp}/bazzite-horizon/${dest}-initramfs.img"
     fi
 
+    # Write the entry last and atomically, so a half-written file is never
+    # the one systemd-boot reads.
+    tmp="${esp}/loader/entries/.${dest}.conf.tmp"
     {
         printf 'title %s\n' "$menutitle"
         if [[ -n "${version}" ]]; then
@@ -82,7 +157,10 @@ write_entry() {
             printf 'initrd /bazzite-horizon/%s-initramfs.img\n' "$dest"
         fi
         printf 'options %s\n' "$opts"
-    } > "${esp}/loader/entries/${dest}.conf"
+    } > "$tmp"
+    mv -f "$tmp" "${esp}/loader/entries/${dest}.conf"
+    log "wrote ${esp}/loader/entries/${dest}.conf"
+    log "options ${opts}"
 }
 
 write_entry "${entries[0]}" "bazzite-horizon" "$title"
@@ -106,17 +184,20 @@ else
 fi
 
 if [[ ! -f "${esp}/loader/loader.conf" ]]; then
+    # editor yes while the image is being brought up: it lets you fix the
+    # kernel line from the systemd-boot menu (press e) instead of booting a
+    # rescue USB. Flip to "editor no" once installs are reliably booting.
     cat > "${esp}/loader/loader.conf" <<'EOF'
 default bazzite-horizon.conf
 timeout 5
 console-mode keep
-editor no
+editor yes
 EOF
 fi
 
 if command -v bootctl >/dev/null 2>&1; then
     bootctl --esp-path="$esp" install || \
-        echo "bazzite-horizon: bootctl install did not set the firmware entry; the menu files are still on the ESP" >&2
+        log "bootctl install did not set the firmware entry; the menu files are still on the ESP"
 fi
 
-echo "bazzite-horizon: systemd-boot entry is ${title}"
+log "systemd-boot entry is ${title}"
