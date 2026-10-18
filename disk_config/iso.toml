@@ -3,39 +3,33 @@
 # (bazzite-horizon or bazzite-horizon-nvidia) before the installer is built.
 # `just cook-iso` does the same replacement locally.
 #
-# bootloader --sdboot tells Fedora 44 Anaconda to install systemd-boot on the
-# new UEFI disk. The %post script then copies the ostree kernel into a real
-# Boot Loader Specification entry on the ESP (see
-# /usr/libexec/bazzite-horizon-sdboot-sync). Without that copy, systemd-boot
-# has no menu line, because it cannot read the kernel off the btrfs root.
+# The disk gets the bootloader Anaconda installs for a bootc payload
+# (bootupd's GRUB). Do not add `bootloader --sdboot` here: Anaconda rejects it
+# for this payload ("Systemd-boot cannot be utilized with the current type of
+# payload"), because it only supports systemd-boot on package (DNF) installs.
 #
-# The USB stick that boots the installer is still GRUB. That menu is the ISO's
+# systemd-boot is added after install instead, from the booted system:
+# bazzite-horizon-sdboot-sync.service (enabled in the image) copies the
+# running ostree deployment's kernel, initrd and kernel line onto the ESP and
+# runs `bootctl install`. GRUB stays on the ESP as a fallback entry in the
+# firmware boot menu.
+#
+# The USB stick that boots the installer is GRUB too. That menu is the ISO's
 # El Torito image, not the bootloader that lands on disk.
-# UEFI only. BIOS cannot use systemd-boot. Secure Boot has to be off: this
-# path does not go through Bazzite's shim.
 
 [customizations.installer.kickstart]
 contents = """
-bootloader --sdboot
-
-# --log lands in the installed system (chrooted path) so a bad first boot
-# can be diagnosed from a rescue shell: mount the root subvolume and read
-# /root/horizon-post.log (/var/roothome/horizon-post.log on ostree).
+# --log lands in the installed system so the install can be checked later:
+# sudo cat /var/roothome/horizon-post.log
 %post --erroronfail --log=/root/horizon-post.log
 set -x
 bootc switch --mutate-in-place --transport registry GHCR_IMAGE
 
-# Snapshot the boot state before and after the sync so the log shows what
-# ostree wrote and what ended up on the ESP.
+# Record the boot state the installer left behind.
 findmnt -no SOURCE,FSTYPE,OPTIONS / /boot /boot/efi /sysroot || true
 ls -l /boot/loader || true
 cat /boot/loader/entries/*.conf || true
 ls -d /sysroot/ostree/boot.*/*/*/* || true
-
-/usr/libexec/bazzite-horizon-sdboot-sync
-
-cat /boot/efi/loader/loader.conf /boot/efi/loader/entries/*.conf || true
-bootctl --esp-path=/boot/efi status || true
 %end
 """
 

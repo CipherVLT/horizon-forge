@@ -104,5 +104,5 @@ if [[ "$mode" == "build" ]]; then
     echo "  podman login ghcr.io"
     echo "  podman push ${local_ref} ${ref}"
 fi
-echo "Flash that ISO. The USB menu is GRUB. After install, systemd-boot lists this image."
-echo "Secure Boot has to be off. UEFI only."
+echo "Flash that ISO. The installed disk boots GRUB first; systemd-boot is added on first boot."
+echo "UEFI only. Secure Boot has to be off for the systemd-boot entry."
