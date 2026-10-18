@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Copy the current ostree deployment into a systemd-boot menu entry on the ESP.
 #
+# GRUB remains the default loader; this entry is an extra the firmware boot
+# menu can offer. See the note above the bootctl call at the bottom.
+#
 # ostree writes a Boot Loader Specification file under /boot/loader/entries and
 # leaves the kernel on /boot. systemd-boot cannot read that partition when it
 # is btrfs or an ext4 that is not the ESP, so the file has to be copied onto
@@ -195,9 +198,19 @@ editor yes
 EOF
 fi
 
+# Put the systemd-boot binary on the ESP but leave the firmware boot order
+# alone (--no-variables). GRUB, which reads ostree's live menu under
+# /boot/loader, stays the loader the machine starts by default. The entry
+# written above is a copy, and ostree rewrites its menu (and flips
+# /ostree/boot.0 <-> boot.1) every time an update is finalized at shutdown;
+# a copy taken before that flip points at a deployment that no longer
+# exists and lands in dracut emergency mode. Making that copy the default
+# loader is what caused the first-boot failures, so systemd-boot is offered
+# only from the firmware's boot menu (F9 on HP) until the entry can be kept
+# in sync natively.
 if command -v bootctl >/dev/null 2>&1; then
-    bootctl --esp-path="$esp" install || \
-        log "bootctl install did not set the firmware entry; the menu files are still on the ESP"
+    bootctl --esp-path="$esp" install --no-variables || \
+        log "bootctl install reported an error; the menu files are still on the ESP"
 fi
 
 log "systemd-boot entry is ${title}"

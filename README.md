@@ -82,9 +82,11 @@ You cook one of two installers:
 | AMD or Intel | `bazzite-horizon` | `just cook-iso amd` | Bazzite Horizon |
 | NVIDIA, including a 5070 Ti | `bazzite-horizon-nvidia` | `just cook-iso nvidia` | Bazzite Horizon NVIDIA |
 
-The USB stick that boots the installer still shows GRUB. That is the ISO's own menu, not the bootloader that lands on the disk. `bootloader --sdboot` plus `/usr/libexec/bazzite-horizon-sdboot-sync` write a systemd-boot entry onto the EFI partition of the installed system. The entry is titled from the table above. ostree keeps the kernel on `/boot`, which systemd-boot cannot read, so the script copies the kernel and initrd onto the ESP. It runs again after later updates.
+The USB stick that boots the installer shows GRUB. That is the ISO's own menu, not the bootloader that lands on the disk.
 
-Secure Boot has to be off. This path does not use Bazzite's shim. BIOS machines cannot boot systemd-boot. qcow2 and raw images skip Anaconda, so they stay on GRUB.
+The installed disk boots **GRUB** by default. GRUB reads ostree's live menu under `/boot/loader`, so it follows every update. `bazzite-horizon-sdboot-sync.service` additionally puts systemd-boot on the EFI partition with a menu entry titled from the table above (ostree keeps the kernel on `/boot`, which systemd-boot cannot read, so the kernel and initrd are copied). That entry is a snapshot: ostree rewrites its menu when an update is finalized at shutdown, and a snapshot taken before that points at a deployment that no longer exists. So systemd-boot is never made the firmware default; pick it from the firmware boot menu (F9 on HP) when you want it, and GRUB is always there to fall back to.
+
+Secure Boot has to be off for the systemd-boot entry; GRUB boots through Bazzite's shim either way. qcow2 and raw images skip Anaconda, so they stay on GRUB.
 
 ### GitHub (this is the one that saves time)
 
@@ -100,8 +102,8 @@ Secure Boot has to be off. This path does not use Bazzite's shim. BIOS machines 
 sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
-8. Firmware: UEFI, Secure Boot off. Boot the USB, install, and give the EFI partition about 2 GiB if the disk editor lets you. The kernel and initrd are copied there.
-9. Reboot. systemd-boot should list **Bazzite Horizon** or **Bazzite Horizon NVIDIA**. If the first reboot is still GRUB, boot once and reboot again. The sync service writes the entry as soon as the ostree menu file exists.
+8. Firmware: UEFI, Secure Boot off. Boot the USB, choose Automatic storage on the target disk (leave other disks unchecked), and give the EFI partition about 2 GiB if the disk editor lets you. The kernel and initrd are copied there.
+9. Reboot. GRUB boots **Bazzite Horizon**. After the first boot, the firmware boot menu (F9 on HP) also offers the systemd-boot entry titled **Bazzite Horizon** or **Bazzite Horizon NVIDIA**.
 10. At the login screen, open the session menu and choose **Event Horizon**. Plasma is still in that list.
 
 ### This computer
