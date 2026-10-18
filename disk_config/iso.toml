@@ -25,6 +25,19 @@ contents = """
 set -x
 bootc switch --mutate-in-place --transport registry GHCR_IMAGE
 
+# When the EFI partition is reused instead of reformatted, an earlier
+# install of this image leaves its systemd-boot and bazzite-horizon entry
+# behind. The firmware keeps booting that stale entry, which points at a
+# deployment that no longer exists, and lands in emergency mode with
+# "Couldn't find specified OSTree root". Strip it so the GRUB this install
+# wrote is the only loader on the disk. bazzite-horizon-sdboot-sync.service
+# re-adds systemd-boot on first boot from a kernel line that is known good.
+rm -rf /boot/efi/loader /boot/efi/bazzite-horizon
+if command -v bootctl >/dev/null 2>&1; then
+    bootctl --esp-path=/boot/efi remove || true
+fi
+ls -R /boot/efi/EFI || true
+
 # Record the boot state the installer left behind.
 findmnt -no SOURCE,FSTYPE,OPTIONS / /boot /boot/efi /sysroot || true
 ls -l /boot/loader || true
