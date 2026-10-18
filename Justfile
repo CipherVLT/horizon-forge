@@ -446,6 +446,10 @@ spawn-vm rebuild="0" type="qcow2" ram="6G":
       --vsock=false --pass-ssh-key=false \
       -i ./output/**/*.{{ type }}
 
+# Runs build_files/build.sh in a bubblewrap sandbox and checks its output
+test:
+    bash tests/test-build.sh
+
 # Runs shell check on all Bash scripts
 lint:
     #!/usr/bin/env bash
