@@ -6,7 +6,8 @@
 # machine and wrong for a published image: `just install` leaves
 # -Dnative_march=true, which tunes the binary for the build CPU (a GitHub
 # runner) and can SIGILL everywhere else. This script pins a commit and
-# forces a portable release build.
+# forces a portable release build. event-horizon.ref pins the upstream
+# commit; 4a4cd77 is tag 0.9.7.4-beta-3.
 set -eoux pipefail
 
 EH_REPO="${EH_REPO:-https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell.git}"

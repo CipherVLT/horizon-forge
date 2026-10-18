@@ -59,6 +59,14 @@ dnf5 install -y \
     adwaita-icon-theme \
     systemd-boot
 
+# Bazzite ships xwaylandvideobridge for KDE screen sharing of X11 windows.
+# Under Hyprland it only leaves a stray Xwayland window around, so drop it.
+# Xwayland itself stays: Steam and most games need it.
+if rpm -q xwaylandvideobridge >/dev/null 2>&1; then
+    dnf5 remove -y xwaylandvideobridge
+fi
+rm -f /etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop
+
 dnf5 copr disable -y nett00n/hyprland || true
 rm -f /etc/yum.repos.d/*nett00n*hyprland*.repo
 
