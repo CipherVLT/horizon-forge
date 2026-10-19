@@ -169,6 +169,24 @@ just cook-iso amd pull   # reuse the published image instead of compiling
 
 The ISO is written to `output/install.iso`.
 
+### Publishing ISOs (Cloudflare R2)
+
+GitHub can't host the ISOs permanently (release files are capped at 2 GB, and Actions artifacts expire). The **Build disk images** workflow can publish them to Cloudflare R2 instead, at fixed links that are replaced on every upload:
+
+`bazzite-horizon-latest.iso` and `bazzite-horizon-nvidia-latest.iso`, each with a `.sha256` checksum.
+
+One-time setup:
+
+1. In the [Cloudflare dashboard](https://dash.cloudflare.com), open **R2** and create a bucket (for example `horizon-forge`).
+2. In the bucket's **Settings**, turn on **Public Development URL** (`https://pub-….r2.dev`), or connect your own domain.
+3. **R2 → Manage API tokens → Create API token**: permission **Object Read & Write**, limited to that bucket. Copy the **Access Key ID** and **Secret Access Key**.
+4. In this repository: **Settings → Secrets and variables → Actions**.
+   - **Secrets:** `R2_ACCOUNT_ID` (shown on the R2 overview page), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
+   - **Variables:** `R2_PUBLIC_URL`, the public URL from step 2.
+5. Run **Build disk images** with **Publish the ISO to Cloudflare R2** ticked, once per image.
+
+R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 12 GB, so expect a few cents a month for the extra space.
+
 **Updating Event Horizon:** put the new commit hash in [`build_files/event-horizon.ref`](build_files/event-horizon.ref) and push.
 
 ---
