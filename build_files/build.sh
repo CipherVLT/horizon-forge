@@ -162,6 +162,23 @@ for unit in ModemManager.service gssproxy.service; do
     ln -sfn /dev/null "/etc/systemd/system/${unit}"
 done
 
+# Event Horizon runs the XDG autostart entries (honouring OnlyShowIn and
+# NotShowIn) like any desktop. A few that Bazzite ships for KDE or for VMs
+# only fail or duplicate work under Hyprland: vmware-user (VMware guests),
+# pam_kwallet_init (KWallet is not running in this session) and the KDE
+# UnifiedPush distributor. Hide them from the Hyprland session only; the
+# Plasma session still starts them.
+for f in /etc/xdg/autostart/*.desktop; do
+    [[ -f "$f" ]] || continue
+    grep -Eq '^Exec=.*(vmware-user|pam_kwallet_init|kunifiedpush)' "$f" || continue
+    if grep -q '^NotShowIn=' "$f"; then
+        sed -i 's/^NotShowIn=/NotShowIn=Hyprland;/' "$f"
+    else
+        sed -i '/^\[Desktop Entry\]/a NotShowIn=Hyprland;' "$f"
+    fi
+    echo "autostart: not started under Hyprland: $f"
+done
+
 # The ISO builder depsolves outside the image. Terra file key
 # exists in the image but not in that builder.
 sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' /etc/yum.repos.d/*.repo
