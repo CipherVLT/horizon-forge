@@ -139,7 +139,7 @@ Event Horizon is beta software. These are known and reported upstream:
 
 | Issue | Workaround |
 | --- | --- |
-| Event Horizon's settings window sometimes draws blank until you scroll | Settings → Panels & UI → **Shell renderer: Cairo** |
+| Event Horizon's settings draw blank except the item under the pointer (Vulkan renderer) | New installs use the Cairo renderer. Otherwise: Settings → Panels & UI → **Shell renderer: Cairo** |
 | Event Horizon's Wi-Fi tab may not open | Wi-Fi still works. Connect with `nmtui` in a terminal |
 | Hyprland shows "*.conf config format will be removed in 0.57*" | Harmless for now. The build refuses Hyprland 0.57 until the config moves to Lua, so an update can't break your desktop |
 

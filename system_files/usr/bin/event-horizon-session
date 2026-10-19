@@ -26,7 +26,11 @@ fi
 eh_config="${config_home}/event-horizon/config.toml"
 default_wallpaper=/usr/share/wallpapers/convergence.png
 if [[ ! -e "${eh_config}" && -f "${default_wallpaper}" ]]; then
-    printf '[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${default_wallpaper}" > "${eh_config}"
+    # Cairo (software) renderer by default: the Vulkan renderer redraws only
+    # the changed part of a panel into a buffer that may not hold the previous
+    # frame, so Settings goes blank except the item under the pointer. Users
+    # can switch back under Settings -> Panels & UI -> Shell renderer.
+    printf '[shell]\nrenderer = "cairo"\n\n[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${default_wallpaper}" > "${eh_config}"
 fi
 
 # GPU environment, regenerated at every login from the hardware that is
