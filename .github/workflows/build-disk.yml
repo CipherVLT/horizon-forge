@@ -13,7 +13,7 @@ on:
           - bazzite-horizon
           - bazzite-horizon-nvidia
       upload-to-s3:
-        description: "Upload to S3"
+        description: "Publish the ISO to Cloudflare R2 (needs the R2 secrets)"
         required: false
         default: false
         type: boolean
@@ -121,7 +121,7 @@ jobs:
           echo "output-directory=output" >> "$GITHUB_OUTPUT"
 
       - name: Upload disk images and Checksum to Job Artifacts
-        if: inputs.upload-to-s3 != true && github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && (inputs.upload-to-s3 != true || matrix.disk-type != 'anaconda-iso')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.disk-type }}-${{ inputs.variant || 'bazzite-horizon' }}
@@ -131,18 +131,57 @@ jobs:
           compression-level: 0
           overwrite: true
       
-      - name: Upload to S3
-        if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'
+      - name: Upload ISO to Cloudflare R2
+        if: inputs.upload-to-s3 == true && matrix.disk-type == 'anaconda-iso' && github.event_name != 'pull_request'
         shell: bash
         env:
-          RCLONE_CONFIG_S3_TYPE: s3
-          RCLONE_CONFIG_S3_PROVIDER: ${{ secrets.S3_PROVIDER }}
-          RCLONE_CONFIG_S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-          RCLONE_CONFIG_S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-          RCLONE_CONFIG_S3_REGION: ${{ secrets.S3_REGION }}
-          RCLONE_CONFIG_S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_REGION: auto
+          RCLONE_CONFIG_R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
           SOURCE_DIR: ${{ steps.build.outputs.output-directory }}
         run: |
+          set -euo pipefail
+          for v in R2_ACCOUNT_ID R2_BUCKET RCLONE_CONFIG_R2_ACCESS_KEY_ID RCLONE_CONFIG_R2_SECRET_ACCESS_KEY; do
+            if [[ -z "${!v}" ]]; then
+              echo "::error::Missing ${v}. Add the R2 secrets described in the README (Publishing ISOs)."
+              exit 1
+            fi
+          done
+
+          iso=$(find "${SOURCE_DIR}" -type f -name install.iso -print -quit)
+          if [[ -z "${iso}" ]]; then
+            echo "::error::No install.iso under ${SOURCE_DIR}"
+            exit 1
+          fi
+
+          # Stable names, so the README can link to them permanently.
+          # Each upload replaces the previous ISO for that image.
+          name="${IMAGE_NAME}-latest.iso"
+          stage=$(mktemp -d)
+          mv "${iso}" "${stage}/${name}"
+          (cd "${stage}" && sha256sum "${name}" > "${name}.sha256")
+          cat "${stage}/${name}.sha256"
+
           sudo apt-get update
           sudo apt-get install -y rclone
-          rclone copy $SOURCE_DIR S3:${{ secrets.S3_BUCKET_NAME }}
+          rclone copyto "${stage}/${name}" "R2:${R2_BUCKET}/${name}" \
+            --s3-chunk-size 100M --s3-upload-concurrency 8 --stats 30s --stats-one-line
+          rclone copyto "${stage}/${name}.sha256" "R2:${R2_BUCKET}/${name}.sha256"
+
+          {
+            echo "### ISO published to Cloudflare R2"
+            echo
+            if [[ -n "${R2_PUBLIC_URL}" ]]; then
+              echo "- ${R2_PUBLIC_URL%/}/${name}"
+              echo "- ${R2_PUBLIC_URL%/}/${name}.sha256"
+            else
+              echo "Uploaded \`${name}\` to bucket \`${R2_BUCKET}\`. Set the repository variable R2_PUBLIC_URL to print download links here."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
