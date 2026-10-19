@@ -104,6 +104,7 @@ fi
 
 /usr/bin/EventHorizon --version
 test -x /usr/bin/event-horizon-session
+test -f /usr/share/wallpapers/convergence.png
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -f /usr/share/event-horizon/skel/hypr/hyprland.conf
 test -e /usr/lib/systemd/boot/efi/systemd-bootx64.efi

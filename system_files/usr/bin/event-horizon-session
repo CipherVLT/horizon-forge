@@ -20,6 +20,15 @@ if [[ ! -e "${config_home}/hypr/eh/colors.conf" ]]; then
     cp "${skel}/hypr/eh/colors.conf" "${config_home}/hypr/eh/colors.conf"
 fi
 
+# First login: point Event Horizon at Bazzite's wallpaper so the desktop is
+# not an empty grey surface. Only written when the user has no shell config
+# yet; after that the shell's own Wallpaper settings own the file.
+eh_config="${config_home}/event-horizon/config.toml"
+default_wallpaper=/usr/share/wallpapers/convergence.png
+if [[ ! -e "${eh_config}" && -f "${default_wallpaper}" ]]; then
+    printf '[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${default_wallpaper}" > "${eh_config}"
+fi
+
 # GPU environment, regenerated at every login from the hardware that is
 # present, so one image works on an AMD desktop and an Intel+NVIDIA laptop
 # alike. Hyprland sources it from hyprland.conf. Put your own overrides in
