@@ -77,7 +77,8 @@ for target in (
 ):
     if s.count(target) != 1:
         sys.exit(f"horizon-forge blur patch: expected one '{target}' in {p}")
-    s = s.replace(target, "/* horizon-forge: no full-screen background blur */")
+    # Keep mgr referenced so -Wunused (with upstream werror) stays quiet.
+    s = s.replace(target, target.split(" = ")[0] + " = nullptr; (void)mgr; /* horizon-forge: no full-screen blur */")
 p.write_text(s)
 print("horizon-forge: patched out full-screen desktop blur")
 PY
@@ -92,7 +93,8 @@ meson setup build-release \
     -Djxl=false \
     -Dcpp_link_args=-fuse-ld=mold \
     -Dc_link_args=-fuse-ld=mold \
-    -Dunity=subprojects
+    -Dunity=subprojects \
+    -Dwerror=false
 
 meson compile -C build-release
 rm -rf /ehroot
