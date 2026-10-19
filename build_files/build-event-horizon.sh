@@ -61,6 +61,28 @@ git -C "${src}" checkout --detach FETCH_HEAD
 git -C "${src}" submodule update --init --recursive --depth 1
 
 cd "${src}"
+# Local patch: the desktop icon layer and the desktop widget layer are
+# full-screen surfaces, and both ask the compositor (ext-background-effect-v1)
+# to blur everything behind their whole area. On a Hyprland that implements
+# that protocol the result is a permanently blurred wallpaper. Drop those two
+# requests; popup menus keep their blur. Fails the build if upstream moves the
+# code, so the patch is re-checked instead of silently skipped.
+python3 - <<'PY'
+import pathlib, sys
+p = pathlib.Path("src/desktop_shell/desktop/core/desktop_layer.cpp")
+s = p.read_text()
+for target in (
+    "L->bgEffect = ext_background_effect_manager_v1_get_background_effect(mgr, L->surface);",
+    "L->widgetBgEffect = ext_background_effect_manager_v1_get_background_effect(mgr, L->widgetSurface);",
+):
+    if s.count(target) != 1:
+        sys.exit(f"horizon-forge blur patch: expected one '{target}' in {p}")
+    s = s.replace(target, "/* horizon-forge: no full-screen background blur */")
+p.write_text(s)
+print("horizon-forge: patched out full-screen desktop blur")
+PY
+
+cd "${src}"
 meson setup build-release \
     --buildtype=release \
     --prefix=/usr \
