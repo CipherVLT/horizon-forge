@@ -63,4 +63,9 @@ gpu_conf="${config_home}/hypr/eh/gpu.conf"
     fi
 } > "${gpu_conf}"
 
+# start-hyprland is Hyprland's own launcher (crash recovery, safe mode);
+# starting the compositor binary directly triggers a startup warning.
+if command -v start-hyprland >/dev/null 2>&1; then
+    exec start-hyprland
+fi
 exec /usr/bin/Hyprland

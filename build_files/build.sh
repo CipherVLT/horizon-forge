@@ -67,6 +67,20 @@ if rpm -q xwaylandvideobridge >/dev/null 2>&1; then
 fi
 rm -f /etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop
 
+# Dialogs Hyprland shows itself (e.g. the ANR "app not responding" prompt).
+dnf5 install -y --skip-unavailable hyprland-guiutils
+rpm -q hyprland-guiutils || echo "WARNING: hyprland-guiutils is not in the copr; Hyprland will warn at login" >&2
+
+# The seeded config is hyprlang (.conf), and Event Horizon writes its
+# colors.conf in that format too. Hyprland 0.57 drops .conf support, so
+# refuse to publish an image that would come up with no config at all.
+# Remove this guard once the config (and Event Horizon) move to Lua.
+hypr_ver=$(rpm -q --qf '%{VERSION}' hyprland)
+if [[ "$(printf '%s\n0.57\n' "${hypr_ver}" | sort -V | head -n 1)" == "0.57" ]]; then
+    echo "Hyprland ${hypr_ver} no longer reads hyprland.conf; migrate the config to Lua first." >&2
+    exit 1
+fi
+
 dnf5 copr disable -y nett00n/hyprland || true
 rm -f /etc/yum.repos.d/*nett00n*hyprland*.repo
 
@@ -140,6 +154,13 @@ if [[ -e /usr/lib/systemd/system/systemd-boot-update.service ]]; then
     fi
 fi
 enable_unit bazzite-horizon-sdboot-sync.service
+
+# Services with nothing to do on these machines: ModemManager (cellular
+# modems; neither target has one) and gssproxy (Kerberos/NFS). Masked, not
+# removed, so `systemctl unmask` brings either back.
+for unit in ModemManager.service gssproxy.service; do
+    ln -sfn /dev/null "/etc/systemd/system/${unit}"
+done
 
 # The ISO builder depsolves outside the image. Terra file key
 # exists in the image but not in that builder.
