@@ -1,18 +1,18 @@
 Bazzite Horizon
 ===============
 
-Bazzite, plus a Hyprland login session named Event Horizon.
-The shell binary is ryzendew's Event Horizon, built from the commit in
-event-horizon.ref with -Dnative_march=false.
+Bazzite with a Hyprland desktop and the Event Horizon shell.
+Project page: https://github.com/CipherVLT/horizon-forge
 
-Plasma is still on the image. At the login screen, open the session menu
-and choose Event Horizon. KDE remains available if the Hyprland session
-misbehaves.
+At the login screen, open the session menu and choose Event Horizon.
+KDE Plasma is still installed and listed there too.
 
-First login copies /usr/share/event-horizon/skel into ~/.config only when
-those files are missing.
+First login creates ~/.config/hypr/hyprland.conf and a default wallpaper
+setting only if they don't exist yet. Your edits are never overwritten.
 
-The ISO installer writes a systemd-boot menu entry titled from boot-title
-("Bazzite Horizon" or "Bazzite Horizon NVIDIA"). The USB's own menu is still
-GRUB. Secure Boot has to be off. qcow2 and raw disks stay on GRUB.
+The computer boots with GRUB. A systemd-boot entry is also placed on the
+EFI partition and can be picked from the firmware boot menu.
 
+  ujust update        update everything
+  ujust horizon-info  show the image and Event Horizon version
+  sudo bootc rollback go back to the previous version (then reboot)

@@ -1,161 +1,200 @@
 # Bazzite Horizon
 
-A custom [Universal Blue](https://universal-blue.org) image. Bazzite stays the base, so Steam, Gamescope, the kernel, and the driver stack are still Bazzite's. On top of that is a Hyprland login session whose shell is [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) (ryzendew).
+**[Bazzite](https://bazzite.gg) with a Hyprland desktop and the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) shell.**
 
-Plasma is not removed. At the login screen, open the session menu and choose **Event Horizon**. KDE is still there if you need it.
+Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, the kernel, drivers, and automatic updates. This image adds a second desktop session, **Event Horizon**, running on Hyprland. KDE Plasma is still installed, so you can switch back at the login screen at any time.
 
-This checkout is the [ublue-os/image-template](https://github.com/ublue-os/image-template) (bootc, GitHub Actions, cosign, bootc-image-builder ISOs), revised the way [theblackdon/dcli-bootc](https://gitlab.com/theblackdon/dcli-bootc) describes an image: one profile, named base images, modules. His desktop on that pattern is KineticOS / KineticWE. This one uses Event Horizon instead.
+> [!WARNING]
+> Event Horizon is in **beta**. Expect rough edges. See [Known issues](#known-issues).
 
-## Images
+---
 
-| Tag | Base | Use it for |
+## Contents
+
+- [Pick your image](#pick-your-image)
+- [Install](#install)
+  - [Option A: Switch from Bazzite (recommended)](#option-a-switch-from-bazzite-recommended)
+  - [Option B: Fresh install from an ISO](#option-b-fresh-install-from-an-iso)
+- [First login](#first-login)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Updating](#updating)
+- [Known issues](#known-issues)
+- [Build it yourself](#build-it-yourself)
+- [Repository layout](#repository-layout)
+- [Credits](#credits)
+
+---
+
+## Pick your image
+
+| Your graphics | Image | Based on |
 | --- | --- | --- |
-| `bazzite-horizon:latest` | `ghcr.io/ublue-os/bazzite:stable` | AMD and Intel |
-| `bazzite-horizon-nvidia:latest` | `ghcr.io/ublue-os/bazzite-nvidia-open:stable` | NVIDIA open module. This is the 5070 Ti / Blackwell image, and it also covers recent GeForce laptops. It is not the older proprietary `bazzite-nvidia` image. |
+| **AMD** or **Intel** | `bazzite-horizon` | `bazzite:stable` |
+| **NVIDIA** GTX 16 / RTX 20 series and newer, including laptops with Intel + NVIDIA | `bazzite-horizon-nvidia` | `bazzite-nvidia-open:stable` |
 
-Both tags are built from the same Containerfile. `BASE_IMAGE` is the only difference.
+The NVIDIA image uses NVIDIA's **open kernel driver**, which is what current cards (RTX 30, 40 and 50 series) are designed for. It does **not** support GTX 10 series or older.
 
-## What changed from the three sources
+On laptops with two GPUs (for example Intel + RTX), the desktop runs on the integrated GPU and leaves the NVIDIA card free for games. This is detected automatically at every login.
 
-**image-template.** `FROM` is an argument instead of a hard-coded line, so one workflow builds both variants. `disk_config/iso.toml` exists (the template's disk workflow points at it; upstream currently only ships `iso-kde.toml` / `iso-gnome.toml`). Signing no longer fails the build when `SIGNING_SECRET` is still empty.
+---
 
-**Event Horizon Fedora.md.** The package list is the same F43+ set, and the shell is still installed to `/usr`. Three edits so it can live in an image rather than a pet machine:
+## Install
 
-- The commit is pinned in [`build_files/event-horizon.ref`](build_files/event-horizon.ref). `just install` tracks whatever `main` is today; an image build should not.
-- `-Dnative_march=false`. Upstream's `just install` leaves that option on, which compiles for the build machine's CPU. A GitHub runner binary can SIGILL on a 5800X3D or a 9700X.
-- The compile happens in a throwaway stage. The final image gets `/ehroot` (the binaries, the shared library, the assets) and the runtime libraries, not gcc, meson, or the git checkout. JPEG is on. JPEG XL is off.
+### Option A: Switch from Bazzite (recommended)
 
-**dcli-bootc / KineticWE.** [`profile.yaml`](profile.yaml) and [`modules/`](modules/) are the readable spec in his format, including `base_images.nvidia`. Actions does not run `dcli-bootc gen`. That command would overwrite the Containerfile. Don't run it in this checkout unless you mean to take the generator over.
-
-## Login session
-
-`/usr/share/wayland-sessions/event-horizon.desktop` starts `/usr/bin/event-horizon-session`.
-
-The first time you log in, that script copies a Hyprland config from `/usr/share/event-horizon/skel` if you don't already have one. It does not touch an existing `~/.config/hypr/hyprland.conf`.
-
-The seeded config starts the shell with `exec-once = EventHorizon` and sources `~/.config/hypr/eh/colors.conf`, which Event Horizon rewrites when you pick a wallpaper.
-
-| Keys | Action |
-| --- | --- |
-| Super + Enter | kitty |
-| Super + Space | fuzzel |
-| Super + Q | close window |
-| Super + F | fullscreen |
-| Super + V | float |
-| Super + M | exit Hyprland |
-| Super + arrows / HJKL | focus |
-| Super + Shift + arrows | move window |
-| Super + 1–9 | workspace |
-
-`ujust horizon-info` prints the Bazzite variant and `EventHorizon --version` when Bazzite's just importer is active.
-
-## Publish
-
-1. Create a new GitHub repo from this folder (or from image-template, then replace it with these files). Turn Actions on.
-2. Set `REPO_ORGANIZATION` in `image-template.env` to your GitHub user or org. That value is only an OCI label. The push path is `ghcr.io/<repo owner>/…`.
-3. Optional: `COSIGN_PASSWORD="" cosign generate-key-pair`, then store `cosign.key` as the Actions secret `SIGNING_SECRET`. Do not commit the private key. Without the secret the image still publishes; it just isn't signed.
-4. Push to `main`. The **Build container image** workflow publishes both tags. The first run is long: it pulls Bazzite and compiles the shell twice, once per variant.
-5. Rebase a machine that is already on a bootc image:
+If the computer already runs Bazzite (or any other Universal Blue / bootc image), you don't need a USB stick. Open a terminal and run the line for your graphics:
 
 ```bash
 # AMD / Intel
-sudo bootc switch ghcr.io/YOUR_GITHUB_USER/bazzite-horizon:latest
+sudo bootc switch ghcr.io/ciphervlt/bazzite-horizon:latest
 
-# NVIDIA open (5070 Ti and other recent GeForce)
-sudo bootc switch ghcr.io/YOUR_GITHUB_USER/bazzite-horizon-nvidia:latest
+# NVIDIA
+sudo bootc switch ghcr.io/ciphervlt/bazzite-horizon-nvidia:latest
 ```
 
-Switch only between images that match the GPU. An NVIDIA image on an AMD box, or the reverse, will not come up cleanly.
+Reboot when it finishes. To go back to stock Bazzite later, run `sudo bootc switch ghcr.io/ublue-os/bazzite:stable` (or `bazzite-nvidia-open:stable`) and reboot.
 
-That command is the install if the machine already runs Bazzite or any other bootc image. No USB. No installer. Reboot when it asks.
+### Option B: Fresh install from an ISO
 
-A blank disk is the only reason to build an ISO. The USB uses Fedora's installer, Anaconda, once, and only to copy this same bootc image onto the disk. You do not configure Anaconda. The kickstart runs `bootc switch` at the end of the copy, so the installed system tracks the GitHub image. After the first boot, updates are `sudo bootc upgrade`. Anaconda is not part of the running system.
+Use this for a blank disk or a computer without Bazzite.
 
-## ISO
+**1. Download the ISO**
 
-Do not download a Bazzite ISO from the website. The KDE and GNOME files there are finished stock installers. This recipe does not remaster them. It starts from the Bazzite **container** (`bazzite:stable` or `bazzite-nvidia-open:stable`). Plasma is already inside that container, so there is no "pick KDE" step.
+1. Open **[Actions → Build disk images](https://github.com/CipherVLT/horizon-forge/actions/workflows/build-disk.yml)** and click the most recent run with a green check.
+2. Under **Artifacts**, download `anaconda-iso-bazzite-horizon` or `anaconda-iso-bazzite-horizon-nvidia` (about 6 GB). You need to be signed in to GitHub, and artifacts expire after 90 days.
+3. Unzip it. The installer is `install.iso`.
 
-You cook one of two installers:
+**2. Write it to a USB stick (8 GB or larger)**
 
-| You are installing on | Workflow choice | `just cook-iso` | Menu title after install |
-| --- | --- | --- | --- |
-| AMD or Intel | `bazzite-horizon` | `just cook-iso amd` | Bazzite Horizon |
-| NVIDIA, including a 5070 Ti | `bazzite-horizon-nvidia` | `just cook-iso nvidia` | Bazzite Horizon NVIDIA |
-| Laptop with Intel/AMD iGPU + NVIDIA (ROG, Legion, …) | `bazzite-horizon-nvidia` | `just cook-iso nvidia` | Bazzite Horizon NVIDIA |
-
-On a hybrid laptop the session script detects both GPUs at login and writes `~/.config/hypr/eh/gpu.conf` so Hyprland renders on the integrated GPU and leaves the NVIDIA card for games. Nothing to configure by hand.
-
-The USB stick that boots the installer shows GRUB. That is the ISO's own menu, not the bootloader that lands on the disk.
-
-The installed disk boots **GRUB** by default. GRUB reads ostree's live menu under `/boot/loader`, so it follows every update. `bazzite-horizon-sdboot-sync.service` additionally puts systemd-boot on the EFI partition with a menu entry titled from the table above (ostree keeps the kernel on `/boot`, which systemd-boot cannot read, so the kernel and initrd are copied). That entry is a snapshot: ostree rewrites its menu when an update is finalized at shutdown, and a snapshot taken before that points at a deployment that no longer exists. So systemd-boot is never made the firmware default; pick it from the firmware boot menu (F9 on HP) when you want it, and GRUB is always there to fall back to.
-
-Secure Boot has to be off for the systemd-boot entry; GRUB boots through Bazzite's shim either way. qcow2 and raw images skip Anaconda, so they stay on GRUB.
-
-### GitHub (this is the one that saves time)
-
-1. Download the recipe (or clone this repo). Create a new GitHub repository and push these files. Turn Actions on.
-2. Set `REPO_ORGANIZATION` in `image-template.env` to that GitHub account. That value is only an OCI label. The registry path is `ghcr.io/<the account that owns the repo>/…`.
-3. Optional: `COSIGN_PASSWORD="" cosign generate-key-pair`, then store `cosign.key` as the Actions secret `SIGNING_SECRET`. Do not commit the private key. Without the secret the image still publishes.
-4. Push to `main`. Wait until **Build container image** is green. The first run pulls Bazzite and compiles Event Horizon twice, once per GPU variant.
-   Then make both packages **public**: GitHub → your profile → Packages → `bazzite-horizon` → Package settings → Change visibility → Public, and the same for `bazzite-horizon-nvidia`. A package pushed by Actions starts private, and installed systems pull updates anonymously, so a private package makes `bootc upgrade` and Bazzite's updater fail after install.
-5. Actions → **Build disk images** → Run workflow. Pick the variant from the table. Leave platform on `amd64`.
-6. Download the artifact `anaconda-iso-<variant>`. Unzip it. The installer is `install.iso`.
-7. Flash the USB with Fedora Media Writer or KDE ISO Image Writer. From a shell, after you have identified the USB and not the system disk:
+Use [Fedora Media Writer](https://fedoraproject.org/workstation/download) or [balenaEtcher](https://etcher.balena.io). On Linux you can also use `dd`; check the device name with `lsblk` first, because this erases it:
 
 ```bash
 sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
-8. Firmware: UEFI, Secure Boot off. Boot the USB, choose Automatic storage on the target disk (leave other disks unchecked), and give the EFI partition about 2 GiB if the disk editor lets you. The kernel and initrd are copied there.
-9. Reboot. GRUB boots **Bazzite Horizon**. After the first boot, the firmware boot menu (F9 on HP) also offers the systemd-boot entry titled **Bazzite Horizon** or **Bazzite Horizon NVIDIA**.
-10. At the login screen, open the session menu and choose **Event Horizon**. Plasma is still in that list.
+**3. Prepare the computer**
 
-### This computer
+- Boot mode: **UEFI**.
+- **Secure Boot: off.** (Installs with Secure Boot on have not been tested.)
 
-Same ISO, compiled here. You need `podman`, `git`, and `just`, and about 80 GiB free for a local compile. Set `REPO_ORGANIZATION` first. The kickstart retargets the installed system at `ghcr.io/<you>/<tag>:latest`, so that tag has to exist before you boot the USB.
+**4. Install**
+
+1. Boot from the USB stick.
+2. At **Installation Destination**, select only the disk you want to install to and choose **Automatic** storage. Leave any other drives unchecked so they aren't touched.
+3. Keep the internet connected, create your user, and start the install.
+4. Reboot and remove the USB stick.
+
+---
+
+## First login
+
+1. At the login screen, open the **session menu** and choose **Event Horizon**. (Plasma is in the same list.)
+2. On the first login you get:
+   - A Hyprland config in `~/.config/hypr/hyprland.conf`. It's yours to edit; updates never overwrite it.
+   - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
+3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
+
+Tip: in the file manager, press **Ctrl + H** to show hidden files such as `~/.config`.
+
+---
+
+## Keyboard shortcuts
+
+| Keys | Action |
+| --- | --- |
+| <kbd>Super</kbd> + <kbd>Enter</kbd> | Terminal (kitty) |
+| <kbd>Super</kbd> + <kbd>Space</kbd> | App launcher (fuzzel) |
+| <kbd>Super</kbd> + <kbd>Q</kbd> | Close window |
+| <kbd>Super</kbd> + <kbd>F</kbd> | Fullscreen |
+| <kbd>Super</kbd> + <kbd>V</kbd> | Toggle floating |
+| <kbd>Super</kbd> + <kbd>P</kbd> | Pseudo-tile |
+| <kbd>Super</kbd> + <kbd>T</kbd> | Toggle split direction |
+| <kbd>Super</kbd> + arrows or <kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> | Move focus |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + arrows | Move window |
+| <kbd>Super</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Go to workspace |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Send window to workspace |
+| <kbd>Super</kbd> + left / right mouse drag | Move / resize window |
+| <kbd>Super</kbd> + <kbd>M</kbd> | Log out |
+
+---
+
+## Updating
+
+Updates work exactly like Bazzite. They download in the background and apply on the next reboot. To update by hand:
 
 ```bash
-sudo pacman -S --needed podman git just
-
-# NVIDIA (5070 Ti and other recent GeForce)
-just cook-iso nvidia
-podman login ghcr.io
-podman push localhost/bazzite-horizon-nvidia:latest \
-  ghcr.io/YOUR_GITHUB_USER/bazzite-horizon-nvidia:latest
-
-# AMD / Intel
-just cook-iso amd
-podman push localhost/bazzite-horizon:latest \
-  ghcr.io/YOUR_GITHUB_USER/bazzite-horizon:latest
+ujust update          # system, Flatpaks and Homebrew
+sudo bootc upgrade    # system image only
 ```
 
-If GitHub has already published the tag and you only want the ISO built locally, skip the compile:
+If an update ever misbehaves, pick the previous entry in the boot menu, or run `sudo bootc rollback` and reboot.
+
+`ujust horizon-info` shows which image and Event Horizon version you are running.
+
+---
+
+## Known issues
+
+Event Horizon is beta software. These are known and reported upstream:
+
+| Issue | Workaround |
+| --- | --- |
+| Event Horizon's settings window sometimes draws blank until you scroll | Settings → Panels & UI → **Shell renderer: Cairo** |
+| Event Horizon's Wi-Fi tab may not open | Wi-Fi still works. Connect with `nmtui` in a terminal |
+| Hyprland shows "*.conf config format will be removed in 0.57*" | Harmless for now. The build refuses Hyprland 0.57 until the config moves to Lua, so an update can't break your desktop |
+
+Already fixed in this image: blurred wallpaper and desktop icons, the Xwayland Video Bridge popup, Hyprland config errors and startup warnings.
+
+Found something new? [Open an issue](https://github.com/CipherVLT/horizon-forge/issues) and include your GPU and a photo of the error.
+
+---
+
+## Build it yourself
+
+Fork this repository to publish your own copy.
+
+1. **Fork** the repo and enable **Actions**.
+2. In `image-template.env`, set `REPO_ORGANIZATION` to your GitHub username.
+3. *(Optional)* Sign your images. Create a key with `COSIGN_PASSWORD="" cosign generate-key-pair` and save the contents of `cosign.key` as the repository secret `SIGNING_SECRET`. Never commit `cosign.key`.
+4. Push to `main`. **Build container image** builds both images (about 15–25 minutes).
+5. **Make the images public.** Go to your GitHub profile → **Packages** → `bazzite-horizon` → **Package settings** → **Change visibility** → **Public**. Repeat for `bazzite-horizon-nvidia`. If you skip this, installed computers can't download updates.
+6. For an ISO: **Actions → Build disk images → Run workflow**, choose the image, platform `amd64`.
+
+To build on your own computer instead (needs `podman`, `git`, `just` and about 80 GB free):
 
 ```bash
-just cook-iso nvidia pull
-just cook-iso amd pull
+just cook-iso amd        # or: just cook-iso nvidia
+just cook-iso amd pull   # reuse the published image instead of compiling
 ```
 
-`just cook-iso` writes `disk_config/iso.built.toml` (the kickstart with your registry tag filled in) and runs bootc-image-builder as `--type anaconda-iso`. The upstream `just build-iso` name still uses the short type `iso`, which does not apply this kickstart. Use `just cook-iso`.
+The ISO is written to `output/install.iso`.
 
-The ISO lands under `output/` as `install.iso`. Flash it the same way as the GitHub artifact.
+**Updating Event Horizon:** put the new commit hash in [`build_files/event-horizon.ref`](build_files/event-horizon.ref) and push.
 
-## Bump Event Horizon
+---
 
-`build_files/event-horizon.ref` is one commit hash, currently `696be1a855a2c682e15765a92cc189f1f8de84be` (0.9.7.3-beta-3 era). Replace the hash and push. The builder fetches that commit and its submodules (the Inter font submodule is required; a non-recursive clone fails the way Fedora.md describes).
+## Repository layout
 
-## Local container only
+| Path | What it does |
+| --- | --- |
+| `Containerfile` | Starts from Bazzite, compiles Event Horizon in a separate stage, copies in the result |
+| `build_files/build-event-horizon.sh` | Compiles Event Horizon at the pinned commit (portable CPU flags, local fixes) |
+| `build_files/build.sh` | Installs Hyprland and runtime packages, applies system tweaks |
+| `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
+| `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
+| `disk_config/iso.toml` | Installer (ISO) settings |
+| `.github/workflows/` | Automated image and ISO builds |
+| `cook-iso.sh` | Builds an ISO on your own computer |
 
-From a machine with podman, and this directory as a git checkout (the Justfile skips some labels when the tree is dirty):
+---
 
-```bash
-# edit REPO_ORGANIZATION first
-just build
-BASE_IMAGE=ghcr.io/ublue-os/bazzite-nvidia-open:stable just build bazzite-horizon-nvidia latest
-```
+## Credits
 
-That publishes nothing and does not write an ISO. For the installer, use `just cook-iso` above.
+- [Bazzite](https://github.com/ublue-os/bazzite) and [Universal Blue](https://universal-blue.org): the base system and the [image template](https://github.com/ublue-os/image-template) this repo started from
+- [Event Horizon Shell](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) by Ryzendrew: the desktop shell
+- [Hyprland](https://hypr.land): the compositor
+- [dcli-bootc](https://gitlab.com/theblackdon/dcli-bootc) by theblackdon: the profile/modules layout (`profile.yaml`, `modules/`)
 
 ## License
 
-The image-template scaffold is Apache-2.0, included here as `LICENSE`. Event Horizon itself is MIT and is fetched at build time; it is not vendored in this repo.
+This repository is [Apache-2.0](LICENSE). Event Horizon is MIT licensed and downloaded at build time; it is not included in this repository.
