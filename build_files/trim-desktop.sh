@@ -3,16 +3,17 @@
 #
 # - Removes KDE apps that duplicate Event Horizon or have no use here, plus
 #   Waydroid and input-remapper.
-# - Installs the apps in apps.list system-wide (GNOME Files, ProtonPlus, ...)
-#   and makes Nautilus the file manager.
+# - Installs the apps in apps.list system-wide (ProtonPlus, OBS, ...) and
+#   makes Strata (install-strata.sh) the file manager.
 # - Leaves the Terra repository enabled so users can rpm-ostree install more.
 # - Hides the Plasma session from the login screen. Plasma's libraries stay
-#   installed: the login screen (Plasma Login) and parts of Bazzite use them.
+#   installed: the login screen (SDDM on KWin) and parts of Bazzite use them.
 #
 # Packages are erased with --nodeps on purpose. A normal dnf remove would also
 # remove anything that depends on them, which on a KDE base can cascade into
 # plasma-workspace and the login screen itself. The checks at the end fail
-# the build if the login screen or Hyprland session went missing.
+# the build if the Hyprland session went missing; install-greeter.sh checks
+# the login screen.
 set -euo pipefail
 # Show the failing line on the GitHub run page (as an annotation).
 trap 'echo "::error title=trim-desktop.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -166,7 +167,17 @@ install_app() {
     log=$(mktemp)
     # Fedora Multimedia is enabled for OBS, so it links the full-codec FFmpeg
     # Bazzite already ships instead of pulling Fedora's ffmpeg-free.
-    if ! dnf5 install -y --enable-repo=terra --enable-repo='*fedora-multimedia*' "${pkg}" >"${log}" 2>&1; then
+    # Fedora's mirror list times out now and then; try three times.
+    local try ok=0
+    for try in 1 2 3; do
+        if dnf5 install -y --enable-repo=terra --enable-repo='*fedora-multimedia*' "${pkg}" >"${log}" 2>&1; then
+            ok=1
+            break
+        fi
+        echo "apps: ${pkg} attempt ${try} failed, retrying"
+        sleep $((try * 20))
+    done
+    if (( ! ok )); then
         cat "${log}"
         echo "::error title=apps.list::dnf5 could not install ${pkg}"
         tail -n 15 "${log}" | sed 's/^/::error title=dnf5 ('"${pkg}"')::/'
@@ -197,10 +208,10 @@ awk '/^\[/{sec=($0=="[terra]")} sec && /^enabled=/{$0="enabled=1"} {print}' \
 mv "${terra_repo}.new" "${terra_repo}"
 grep -A20 '^\[terra\]' "${terra_repo}" | grep -m1 '^enabled=1'
 
-# Default folder handler in the Hyprland session: Nautilus, then Strata.
+# Default folder handler in the Hyprland session: Strata.
 cat > /usr/share/applications/hyprland-mimeapps.list <<'EOF'
 [Default Applications]
-inode/directory=org.gnome.Nautilus.desktop;io.github.lgse.Strata.desktop;
+inode/directory=io.github.lgse.Strata.desktop;
 EOF
 
 # --- Login screen: Event Horizon only ----------------------------------------
@@ -212,10 +223,11 @@ rm -f /usr/share/wayland-sessions/plasma.desktop \
 # --- Checks --------------------------------------------------------------------
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -x /usr/bin/Hyprland
-test -x /usr/bin/nautilus
-for pkg in "${apps[@]}"; do rpm -q "${pkg}" >/dev/null; done
-if ! command -v plasmalogin >/dev/null 2>&1 && ! ls /usr/lib/systemd/system/plasmalogin.service >/dev/null 2>&1; then
-    echo "trim: the Plasma Login screen is gone; refusing to build an image nobody can log into" >&2
-    exit 1
+test -x /usr/bin/strata
+# Strata should be the only "Show in folder" handler.
+mapfile -t fm1 < <(grep -l -x 'Name=org.freedesktop.FileManager1' /usr/share/dbus-1/services/*.service)
+if (( ${#fm1[@]} != 1 )); then
+    echo "::warning title=trim-desktop.sh::FileManager1 is provided by: ${fm1[*]}"
 fi
+for pkg in "${apps[@]}"; do rpm -q "${pkg}" >/dev/null; done
 echo "trim: done"

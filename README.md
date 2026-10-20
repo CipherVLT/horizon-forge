@@ -92,10 +92,11 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | | Bazzite (KDE) | Bazzite Horizon |
 | --- | --- | --- |
 | Desktop | KDE Plasma | Event Horizon on Hyprland (Plasma session hidden) |
-| File manager | Dolphin | GNOME Files, plus Strata |
+| Login screen | Plasma Login | SDDM with the [Pixie](https://github.com/xCaptaiN09/pixie-sddm) theme, Bazzite wallpaper, 12-hour clock |
+| File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
 | Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
 | Removed | | Kate, KDE Menu Editor, Steam starting at login, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole (kitty is the terminal), KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 configuration, Btrfs Assistant, Cardwire app (the GPU-switching service stays in the NVIDIA image for dual-GPU laptops), the Discourse forum link, Xwayland Video Bridge |
-| Added (system packages) | | Firefox, OBS Studio, gedit, GNOME Files, ProtonPlus, Heroic Games Launcher, Strata |
+| Added (system packages) | | Firefox, OBS Studio, gedit, ProtonPlus, Heroic Games Launcher, Strata |
 | Codecs | Full (FFmpeg, H.264/H.265, AAC, hardware video decode) | Same, unchanged |
 | Virtual machines | `ujust setup-virtualization` (Flatpak) | `ujust horizon-vm` installs QEMU/KVM and virt-manager as system packages, on demand |
 | Installing software | Flatpak first; `rpm-ostree install` only sees Fedora | The **Terra** repository is left on, so `rpm-ostree install` finds far more apps (for example `protonplus`). Flatpak, Homebrew and Distrobox work as usual |
@@ -117,7 +118,7 @@ ujust horizon-vm-remove   # undo
 
 1. Log in. **Event Horizon** is the only session on the login screen.
 2. On the first login you get:
-   - **GNOME Files** as the file manager. [Strata](https://github.com/lgse/strata) is also installed if you prefer a keyboard-driven one.
+   - **[Strata](https://github.com/lgse/strata)** as the file manager. It also answers "Show in folder" from Firefox, Steam and other apps.
    - A Hyprland config in `~/.config/hypr/hyprland.conf`. It's yours to edit; updates never overwrite it.
    - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
 3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
@@ -230,6 +231,7 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
 | `build_files/apps.list` | Extra apps installed system-wide. Add a line to add an app |
 | `build_files/trim-desktop.sh` | Removes the KDE apps, installs `apps.list`, opens the Terra repository, hides the Plasma session |
+| `build_files/install-greeter.sh` | Switches the login screen to SDDM with the Pixie theme (vendored in `system_files/usr/share/sddm/themes/pixie`) |
 | `build_files/strata.ref`, `install-strata.sh` | Strata file manager: pinned release and its checksum |
 | `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
 | `disk_config/iso.toml` | Installer (ISO) settings |

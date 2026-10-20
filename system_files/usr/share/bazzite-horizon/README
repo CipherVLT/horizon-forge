@@ -4,8 +4,9 @@ Bazzite Horizon
 Bazzite with a Hyprland desktop and the Event Horizon shell.
 Project page: https://github.com/CipherVLT/horizon-forge
 
-At the login screen, open the session menu and choose Event Horizon.
-KDE Plasma is still installed and listed there too.
+The login screen is SDDM with the Pixie theme. Event Horizon is the only
+session listed. To go back to Bazzite's Plasma Login screen:
+  sudo systemctl disable sddm && sudo systemctl enable plasmalogin
 
 First login creates ~/.config/hypr/hyprland.conf and a default wallpaper
 setting only if they don't exist yet. Your edits are never overwritten.

@@ -7,8 +7,7 @@
 # Heavy, occasional tools are not listed here; they install on demand with
 # ujust (see system_files/usr/share/ublue-os/just/horizon.just).
 
-# Files
-nautilus
+# Files (the file manager, Strata, comes from install-strata.sh)
 gedit
 
 # Web
