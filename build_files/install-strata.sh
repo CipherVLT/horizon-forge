@@ -7,10 +7,10 @@
 # download fails the build. To update: put the new version and the hash from
 # the release's .tar.gz.sha256 asset into strata.ref.
 #
-# Strata becomes the default folder handler only in the Hyprland (Event
-# Horizon) session, via hyprland-mimeapps.list. Plasma keeps Dolphin. Its
+# Strata is the second choice for folders in the Hyprland session, after
+# GNOME Files (see trim-desktop.sh, which writes hyprland-mimeapps.list). Its
 # org.freedesktop.FileManager1 D-Bus service and file-chooser portal are not
-# installed, because both would also take over from Dolphin under Plasma.
+# installed; Nautilus provides FileManager1.
 set -euo pipefail
 
 read -r version sha256 < /ctx/strata.ref
@@ -54,12 +54,6 @@ install -Dm644 "${src}/io.github.lgse.Strata.svg" \
 install -Dm644 -t /usr/share/licenses/strata \
     "${src}/LICENSE" "${src}/THIRD_PARTY_LICENSES.md" "${src}/UnRAR.txt"
 install -Dm644 "${src}/SOURCE_COMMIT" /usr/share/licenses/strata/SOURCE_COMMIT
-
-# XDG per-desktop defaults: read only when XDG_CURRENT_DESKTOP=Hyprland.
-cat > /usr/share/applications/hyprland-mimeapps.list <<'EOF'
-[Default Applications]
-inode/directory=io.github.lgse.Strata.desktop
-EOF
 
 desktop-file-validate /usr/share/applications/io.github.lgse.Strata.desktop
 if ldd /usr/bin/strata | grep -F 'not found'; then

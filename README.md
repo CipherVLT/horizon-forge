@@ -2,7 +2,7 @@
 
 **[Bazzite](https://bazzite.gg) with a Hyprland desktop and the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) shell.**
 
-Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, the kernel, drivers, and automatic updates. This image adds a second desktop session, **Event Horizon**, running on Hyprland. KDE Plasma is still installed, so you can switch back at the login screen at any time.
+Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, the BORE-scheduled kernel, drivers, and automatic updates. On top of that it is set up for **creators and coders**: a single desktop, **Event Horizon** on Hyprland, without the KDE apps it replaces, and package repositories left open so you can install software system-wide.
 
 > [!WARNING]
 > Event Horizon is in **beta**. Expect rough edges. See [Known issues](#known-issues).
@@ -12,6 +12,7 @@ Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, 
 ## Contents
 
 - [Pick your image](#pick-your-image)
+- [What's different from Bazzite](#whats-different-from-bazzite)
 - [Install](#install)
   - [Option A: Switch from Bazzite (recommended)](#option-a-switch-from-bazzite-recommended)
   - [Option B: Fresh install from an ISO](#option-b-fresh-install-from-an-iso)
@@ -86,11 +87,26 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 
 ---
 
+## What's different from Bazzite
+
+| | Bazzite (KDE) | Bazzite Horizon |
+| --- | --- | --- |
+| Desktop | KDE Plasma | Event Horizon on Hyprland (Plasma session hidden) |
+| File manager | Dolphin | GNOME Files, plus Strata |
+| Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
+| Removed | | Waydroid, input-remapper, KDE Connect, KDE System Settings, KDebugSettings, KWalletManager, KRDC, Filelight, Emoji Selector, the Discourse forum link, Xwayland Video Bridge |
+| Added | | ProtonPlus (system package), GNOME Files, Strata |
+| Installing software | Flatpak first; `rpm-ostree install` only sees Fedora | The **Terra** repository is left on, so `rpm-ostree install` finds far more apps (for example `protonplus`). Flatpak, Homebrew and Distrobox work as usual |
+
+`rpm-ostree install <package>` adds a system package that survives updates. Use it for things you want system-wide; every layered package is reapplied on each update, so a handful is fine.
+
+---
+
 ## First login
 
-1. At the login screen, open the **session menu** and choose **Event Horizon**. (Plasma is in the same list.)
+1. Log in. **Event Horizon** is the only session on the login screen.
 2. On the first login you get:
-   - **[Strata](https://github.com/lgse/strata)** as the file manager in the Event Horizon session (Plasma keeps Dolphin).
+   - **GNOME Files** as the file manager. [Strata](https://github.com/lgse/strata) is also installed if you prefer a keyboard-driven one.
    - A Hyprland config in `~/.config/hypr/hyprland.conf`. It's yours to edit; updates never overwrite it.
    - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
 3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
@@ -201,6 +217,8 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `build_files/build-event-horizon.sh` | Compiles Event Horizon at the pinned commit (portable CPU flags, local fixes) |
 | `build_files/build.sh` | Installs Hyprland and runtime packages, applies system tweaks |
 | `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
+| `build_files/apps.list` | Extra apps installed system-wide. Add a line to add an app |
+| `build_files/trim-desktop.sh` | Removes the KDE apps, installs `apps.list`, opens the Terra repository, hides the Plasma session |
 | `build_files/strata.ref`, `install-strata.sh` | Strata file manager: pinned release and its checksum |
 | `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
 | `disk_config/iso.toml` | Installer (ISO) settings |
