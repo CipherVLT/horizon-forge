@@ -90,6 +90,8 @@ if [[ ! -d /ehroot/usr ]]; then
 fi
 cp -a /ehroot/. /
 
+bash /ctx/install-strata.sh
+
 install -d /usr/share/bazzite-horizon
 printf '%s\n' "${BAZZITE_HORIZON_BASE:-unset}" > /usr/share/bazzite-horizon/base-image
 cp /ctx/event-horizon.ref /usr/share/bazzite-horizon/event-horizon.ref
@@ -118,6 +120,7 @@ fi
 
 /usr/bin/EventHorizon --version
 test -x /usr/bin/event-horizon-session
+test -x /usr/bin/strata
 test -f /usr/share/wallpapers/convergence.png
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -f /usr/share/event-horizon/skel/hypr/hyprland.conf
