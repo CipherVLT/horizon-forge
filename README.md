@@ -104,6 +104,7 @@ Tip: in the file manager, press **Ctrl + H** to show hidden files such as `~/.co
 | --- | --- |
 | <kbd>Super</kbd> + <kbd>Enter</kbd> | Terminal (kitty) |
 | <kbd>Super</kbd> + <kbd>Space</kbd> | App launcher (fuzzel) |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Screenshot (select an area) |
 | <kbd>Super</kbd> + <kbd>Q</kbd> | Close window |
 | <kbd>Super</kbd> + <kbd>F</kbd> | Fullscreen |
 | <kbd>Super</kbd> + <kbd>V</kbd> | Toggle floating |
