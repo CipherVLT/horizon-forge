@@ -1,0 +1,64 @@
+---
+name: Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Check shell scripts
+        run: |
+          set -euo pipefail
+          mapfile -t scripts < <(
+            git ls-files '*.sh'
+            printf '%s\n' \
+              system_files/usr/bin/event-horizon-session \
+              system_files/usr/libexec/bazzite-horizon-sdboot-sync
+          )
+          shellcheck --version
+          shellcheck --severity=warning "${scripts[@]}"
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-24.04
+    env:
+      ACTIONLINT_VERSION: "1.7.12"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Check workflows
+        env:
+          # Inherited template workflows carry style-level notes; fail on
+          # real problems only.
+          SHELLCHECK_OPTS: --severity=warning
+        run: |
+          set -euo pipefail
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "${url}/${archive}"
+          curl -fsSL "${url}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" | grep " ${archive}\$" | sha256sum -c -
+          tar -xzf "${archive}" actionlint
+          ./actionlint -color

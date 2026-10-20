@@ -1,0 +1,56 @@
+---
+name: Vulnerability scan
+
+# Scans the published images with Trivy and reports to the repository's
+# Security tab (Code scanning). It does not fail on findings: almost all of
+# them come from the Bazzite/Fedora base and are fixed upstream, then picked
+# up by the daily rebuild.
+
+on:
+  schedule:
+    - cron: '30 12 * * 1'  # Mondays, after the daily image build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Scan ${{ matrix.image_name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image_name:
+          - bazzite-horizon
+          - bazzite-horizon-nvidia
+    steps:
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+
+      - name: Image reference
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "IMAGE_REF=ghcr.io/${owner}/${{ matrix.image_name }}:latest" >> "${GITHUB_ENV}"
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          scanners: vuln
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-${{ matrix.image_name }}.sarif
+          exit-code: "0"
+          timeout: 40m
+
+      - name: Upload to Security tab
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          sarif_file: trivy-${{ matrix.image_name }}.sarif
+          category: trivy-${{ matrix.image_name }}
