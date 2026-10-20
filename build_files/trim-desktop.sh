@@ -99,17 +99,6 @@ done
 
 # --- System-wide apps (build_files/apps.list) ----------------------------------
 mapfile -t apps < <(grep -v -E '^[[:space:]]*(#|$)' /ctx/apps.list | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
-# Microsoft's repository for Visual Studio Code (package "code"). Left
-# enabled so `rpm-ostree install`/updates can see newer VS Code builds.
-rpm --import https://packages.microsoft.com/keys/microsoft.asc || echo "::error title=apps.list::could not import the Microsoft signing key"
-cat > /etc/yum.repos.d/vscode.repo <<'EOF'
-[code]
-name=Visual Studio Code
-baseurl=https://packages.microsoft.com/yumrepos/vscode
-enabled=1
-gpgcheck=1
-gpgkey=https://packages.microsoft.com/keys/microsoft.asc
-EOF
 # One package at a time so a failure names the package. Errors are also
 # printed as GitHub annotations (::error::), which show on the workflow run
 # without opening the full log.
