@@ -186,4 +186,6 @@ done
 # exists in the image but not in that builder.
 sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' /etc/yum.repos.d/*.repo
 
+bash /ctx/trim-desktop.sh
+
 dnf5 clean all
