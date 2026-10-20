@@ -94,7 +94,7 @@ install -d /usr/share/bazzite-horizon
 printf '%s\n' "${BAZZITE_HORIZON_BASE:-unset}" > /usr/share/bazzite-horizon/base-image
 cp /ctx/event-horizon.ref /usr/share/bazzite-horizon/event-horizon.ref
 
-case "${BAZZITE_HORIZON_BASE}" in
+case "${BAZZITE_HORIZON_BASE:-}" in
     *nvidia*)
         BOOT_TITLE="Bazzite Horizon NVIDIA"
         ;;
