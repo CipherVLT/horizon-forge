@@ -37,6 +37,21 @@ if [[ ! -e "${eh_config}" && -f "${default_wallpaper}" ]]; then
     printf '[shell]\nrenderer = "cairo"\n\n[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${default_wallpaper}" > "${eh_config}"
 fi
 
+# Bazzite's installer copies a silent Steam autostart entry into every new
+# user's ~/.config/autostart, so Steam opens at each login. The image no
+# longer ships it; remove the copy already in the home folder, once. If you
+# later turn on Steam's own "Run Steam when my computer starts", Steam
+# writes a new entry and this does not touch it again.
+state_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/bazzite-horizon"
+if [[ ! -e "${state_dir}/steam-autostart-removed" ]]; then
+    steam_autostart="${config_home}/autostart/steam.desktop"
+    if [[ -f "${steam_autostart}" ]] && grep -q -- '-silent' "${steam_autostart}"; then
+        rm -f "${steam_autostart}"
+    fi
+    mkdir -p "${state_dir}"
+    : > "${state_dir}/steam-autostart-removed"
+fi
+
 # GPU environment, regenerated at every login from the hardware that is
 # present, so one image works on an AMD desktop and an Intel+NVIDIA laptop
 # alike. Hyprland sources it from hyprland.conf. Put your own overrides in
