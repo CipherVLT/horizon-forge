@@ -18,32 +18,57 @@ set -euo pipefail
 trap 'echo "::error title=trim-desktop.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 # --- Remove ------------------------------------------------------------------
-# Each name is only removed if installed, so a renamed or missing package is
-# skipped (and reported) instead of failing the build.
+# Each line is an extended regex matched against whole installed package
+# names (so "rom-properties.*" catches every rom-properties subpackage).
+# Patterns that match nothing are reported and skipped, not fatal.
 remove=(
-    waydroid
-    input-remapper
-    kde-connect kde-connect-libs kdeconnectd
-    kdebugsettings
-    kwalletmanager5 kwalletmanager
-    spectacle
-    dolphin dolphin-plugins
-    krdc krdc-libs
-    filelight
-    plasma-systemsettings
+    'waydroid'
+    'input-remapper'
+    'kde-connect(-libs)?' 'kdeconnectd'
+    'kdebugsettings'
+    'kwalletmanager5?'
+    'spectacle'
+    'dolphin(-plugins)?'
+    'krdc(-libs)?'
+    'krfb(-libs)?'
+    'filelight'
+    'plasma-systemsettings'
+    'khelpcenter'
+    'kfind'
+    'konsole(-part)?'
+    'kwrite'
+    'rom-properties.*'
+    'lutris'
+    'fcitx5-configtool' 'kcm-fcitx5'
+    'btrfs-assistant'
+    'cardwire-gui'
 )
+# The cardwire daemon picks the discrete GPU on laptops with two GPUs
+# (Intel/AMD + NVIDIA). Keep it in the NVIDIA image for those laptops;
+# remove it from the AMD/Intel image, which targets single-GPU desktops.
+case "${BAZZITE_HORIZON_BASE:-}" in
+    *nvidia*) ;;
+    *) remove+=('cardwire') ;;
+esac
+
+mapfile -t all_pkgs < <(rpm -qa --qf '%{NAME}\n' | sort -u)
 installed=()
-for pkg in "${remove[@]}"; do
-    if rpm -q "${pkg}" >/dev/null 2>&1; then
-        installed+=("${pkg}")
+for pattern in "${remove[@]}"; do
+    mapfile -t hits < <(printf '%s\n' "${all_pkgs[@]}" | grep -x -E "${pattern}" || true)
+    if (( ${#hits[@]} )); then
+        installed+=("${hits[@]}")
     else
-        echo "trim: ${pkg} is not installed, skipping"
+        echo "trim: nothing installed matches ${pattern}, skipping"
     fi
 done
 if (( ${#installed[@]} )); then
     echo "trim: removing ${installed[*]}"
     rpm --erase --nodeps "${installed[@]}"
 fi
+case "${BAZZITE_HORIZON_BASE:-}" in
+    *nvidia*) ;;
+    *) rm -f /etc/systemd/system/*.wants/cardwired.service ;;
+esac
 
 # Leftover enable links for removed services.
 rm -f /etc/systemd/system/*.wants/input-remapper*.service \
@@ -85,6 +110,17 @@ hide=(
     kdesystemsettings.desktop
     input-remapper-gtk.desktop
     Waydroid.desktop
+    org.kde.khelpcenter.desktop
+    org.kde.kfind.desktop
+    org.kde.konsole.desktop
+    org.kde.kwrite.desktop
+    org.kde.krfb.desktop
+    com.gerbilsoft.rom-properties.rp-config.desktop
+    rp-config.desktop
+    net.lutris.Lutris.desktop
+    org.fcitx.fcitx5-config-qt.desktop
+    org.fcitx.fcitx5-migrator.desktop
+    btrfs-assistant.desktop
 )
 for id in "${hide[@]}"; do
     f="/usr/share/applications/${id}"
@@ -96,6 +132,20 @@ for id in "${hide[@]}"; do
     fi
     echo "trim: hidden ${id}"
 done
+
+# Anything left in the menu that launches a removed program.
+for f in /usr/share/applications/*.desktop; do
+    if grep -q -E '^Exec=.*\b(cardwire-gui|btrfs-assistant|rp-config|lutris|konsole|khelpcenter|kfind|kwrite|krfb|fcitx5-config-qt)\b' "${f}" \
+        && ! grep -q '^NoDisplay=true' "${f}"; then
+        sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nNoDisplay=true/' "${f}"
+        echo "trim: hidden $(basename "${f}")"
+    fi
+done
+
+# Terminal for desktop entries with Terminal=true and xdg-terminal-exec,
+# now that Konsole is gone: kitty in the Hyprland session.
+install -d /usr/share/xdg-terminal-exec
+printf 'kitty.desktop\n' > /usr/share/xdg-terminal-exec/hyprland-xdg-terminals.list
 
 # --- System-wide apps (build_files/apps.list) ----------------------------------
 mapfile -t apps < <(grep -v -E '^[[:space:]]*(#|$)' /ctx/apps.list | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
