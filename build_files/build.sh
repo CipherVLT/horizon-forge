@@ -3,6 +3,8 @@
 # binaries staged by build-event-horizon.sh. Plasma stays installed so the
 # gear menu on the login screen can still fall back to KDE.
 set -eoux pipefail
+# Show the failing line on the GitHub run page (as an annotation).
+trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 cp -avf /ctx/system_files/. /
 chmod 0755 /usr/bin/event-horizon-session
