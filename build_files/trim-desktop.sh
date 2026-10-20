@@ -37,6 +37,8 @@ remove=(
     'kfind'
     'konsole(-part)?'
     'kwrite'
+    'kate(-plugins|-libs)?'
+    'kmenuedit'
     'rom-properties.*'
     'lutris'
     'fcitx5-configtool' 'kcm-fcitx5'
@@ -114,6 +116,8 @@ hide=(
     org.kde.kfind.desktop
     org.kde.konsole.desktop
     org.kde.kwrite.desktop
+    org.kde.kate.desktop
+    org.kde.kmenuedit.desktop
     org.kde.krfb.desktop
     com.gerbilsoft.rom-properties.rp-config.desktop
     rp-config.desktop
@@ -133,9 +137,14 @@ for id in "${hide[@]}"; do
     echo "trim: hidden ${id}"
 done
 
+# Bazzite starts Steam at every login (silently, in the tray). Don't: launch
+# it when you want it, or turn on Steam > Settings > Interface > "Run Steam
+# when my computer starts", which writes a per-user autostart entry.
+rm -f /etc/xdg/autostart/steam.desktop /etc/skel/.config/autostart/steam.desktop
+
 # Anything left in the menu that launches a removed program.
 for f in /usr/share/applications/*.desktop; do
-    if grep -q -E '^Exec=.*\b(cardwire-gui|btrfs-assistant|rp-config|lutris|konsole|khelpcenter|kfind|kwrite|krfb|fcitx5-config-qt)\b' "${f}" \
+    if grep -q -E '^Exec=.*\b(cardwire-gui|btrfs-assistant|rp-config|lutris|konsole|khelpcenter|kfind|kwrite|kate|kmenuedit|krfb|fcitx5-config-qt)\b' "${f}" \
         && ! grep -q '^NoDisplay=true' "${f}"; then
         sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nNoDisplay=true/' "${f}"
         echo "trim: hidden $(basename "${f}")"
