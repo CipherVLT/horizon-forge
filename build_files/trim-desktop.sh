@@ -167,7 +167,17 @@ install_app() {
     log=$(mktemp)
     # Fedora Multimedia is enabled for OBS, so it links the full-codec FFmpeg
     # Bazzite already ships instead of pulling Fedora's ffmpeg-free.
-    if ! dnf5 install -y --enable-repo=terra --enable-repo='*fedora-multimedia*' "${pkg}" >"${log}" 2>&1; then
+    # Fedora's mirror list times out now and then; try three times.
+    local try ok=0
+    for try in 1 2 3; do
+        if dnf5 install -y --enable-repo=terra --enable-repo='*fedora-multimedia*' "${pkg}" >"${log}" 2>&1; then
+            ok=1
+            break
+        fi
+        echo "apps: ${pkg} attempt ${try} failed, retrying"
+        sleep $((try * 20))
+    done
+    if (( ! ok )); then
         cat "${log}"
         echo "::error title=apps.list::dnf5 could not install ${pkg}"
         tail -n 15 "${log}" | sed 's/^/::error title=dnf5 ('"${pkg}"')::/'

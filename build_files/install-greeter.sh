@@ -20,9 +20,19 @@ wallpaper=/usr/share/wallpapers/convergence.png
 
 # sddm-wayland-plasma runs the greeter on KWin; sddm-wayland-generic (Weston)
 # is the fallback if Fedora ever drops it.
-if ! dnf5 install -y sddm sddm-wayland-plasma; then
+# Fedora's mirror list times out now and then, so each try is repeated.
+retry() {
+    local try
+    for try in 1 2 3; do
+        "$@" && return 0
+        echo "greeter: attempt ${try} failed: $*"
+        sleep $((try * 20))
+    done
+    return 1
+}
+if ! retry dnf5 install -y sddm sddm-wayland-plasma; then
     echo "::warning title=install-greeter.sh::sddm-wayland-plasma unavailable, using sddm-wayland-generic"
-    dnf5 install -y sddm sddm-wayland-generic
+    retry dnf5 install -y sddm sddm-wayland-generic
 fi
 
 # The Bazzite wallpaper as the background (theme.conf points here).
