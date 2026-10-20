@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Bazzite Horizon: on Fedora atomic, /home is a link to /var/home, so a shell
 # started in the resolved path shows /var/home/<user> instead of ~.
 # If the current directory is the home directory under another name, switch
