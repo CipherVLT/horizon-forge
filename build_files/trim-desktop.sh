@@ -97,8 +97,21 @@ done
 
 # --- System-wide apps (build_files/apps.list) ----------------------------------
 mapfile -t apps < <(grep -v -E '^[[:space:]]*(#|$)' /ctx/apps.list | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+# Microsoft's repository for Visual Studio Code (package "code"). Left
+# enabled so `rpm-ostree install`/updates can see newer VS Code builds.
+rpm --import https://packages.microsoft.com/keys/microsoft.asc
+cat > /etc/yum.repos.d/vscode.repo <<'EOF'
+[code]
+name=Visual Studio Code
+baseurl=https://packages.microsoft.com/yumrepos/vscode
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
 if (( ${#apps[@]} )); then
-    dnf5 install -y --enable-repo=terra "${apps[@]}"
+    # Fedora Multimedia first for OBS, so it links the full-codec FFmpeg
+    # Bazzite already ships instead of pulling Fedora's ffmpeg-free.
+    dnf5 install -y --enable-repo=terra --enable-repo='*fedora-multimedia*' "${apps[@]}"
 fi
 
 # --- Open package repositories ----------------------------------------------------
@@ -134,7 +147,7 @@ rm -f /usr/share/wayland-sessions/plasma.desktop \
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -x /usr/bin/Hyprland
 test -x /usr/bin/nautilus
-test -x /usr/bin/protonplus || rpm -q protonplus
+for pkg in "${apps[@]}"; do rpm -q "${pkg}" >/dev/null; done
 if ! command -v plasmalogin >/dev/null 2>&1 && ! ls /usr/lib/systemd/system/plasmalogin.service >/dev/null 2>&1; then
     echo "trim: the Plasma Login screen is gone; refusing to build an image nobody can log into" >&2
     exit 1

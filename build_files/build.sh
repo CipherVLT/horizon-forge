@@ -188,4 +188,9 @@ sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpg
 
 bash /ctx/trim-desktop.sh
 
+# Bazzite's ujust only reads recipe files its justfile imports.
+if [[ -f /usr/share/ublue-os/justfile ]] && ! grep -q 'horizon.just' /usr/share/ublue-os/justfile; then
+    echo 'import "/usr/share/ublue-os/just/horizon.just"' >> /usr/share/ublue-os/justfile
+fi
+
 dnf5 clean all
