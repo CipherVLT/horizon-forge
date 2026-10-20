@@ -7,6 +7,10 @@ export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-Hyprland}"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-Hyprland}"
 export XDG_SESSION_TYPE=wayland
 
+# Start everything from $HOME as spelled in /etc/passwd, so terminals open in
+# ~ instead of its resolved path (/var/home/<user> on Fedora atomic).
+cd "${HOME}" || true
+
 config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
 skel=/usr/share/event-horizon/skel
 
