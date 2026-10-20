@@ -202,7 +202,7 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
 | `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
 | `disk_config/iso.toml` | Installer (ISO) settings |
-| `.github/workflows/` | Automated image and ISO builds |
+| `.github/workflows/` | Image and ISO builds, lint (ShellCheck, actionlint) on every change, weekly Trivy vulnerability scan |
 | `cook-iso.sh` | Builds an ISO on your own computer |
 
 ---
