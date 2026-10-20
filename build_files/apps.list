@@ -17,5 +17,6 @@ firefox
 # Create
 obs-studio
 
-# Gaming
+# Gaming (Steam itself already comes from Terra in Bazzite)
 protonplus
+heroic-games-launcher

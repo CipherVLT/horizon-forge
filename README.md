@@ -94,8 +94,8 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | Desktop | KDE Plasma | Event Horizon on Hyprland (Plasma session hidden) |
 | File manager | Dolphin | GNOME Files, plus Strata |
 | Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
-| Removed | | Waydroid, input-remapper, KDE Connect, KDE System Settings, KDebugSettings, KWalletManager, KRDC, Filelight, Emoji Selector, the Discourse forum link, Xwayland Video Bridge |
-| Added (system packages) | | Firefox, OBS Studio, gedit, GNOME Files, ProtonPlus, Strata |
+| Removed | | Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole (kitty is the terminal), KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 configuration, Btrfs Assistant, Cardwire app (the GPU-switching service stays in the NVIDIA image for dual-GPU laptops), the Discourse forum link, Xwayland Video Bridge |
+| Added (system packages) | | Firefox, OBS Studio, gedit, GNOME Files, ProtonPlus, Heroic Games Launcher, Strata |
 | Codecs | Full (FFmpeg, H.264/H.265, AAC, hardware video decode) | Same, unchanged |
 | Virtual machines | `ujust setup-virtualization` (Flatpak) | `ujust horizon-vm` installs QEMU/KVM and virt-manager as system packages, on demand |
 | Installing software | Flatpak first; `rpm-ostree install` only sees Fedora | The **Terra** repository is left on, so `rpm-ostree install` finds far more apps (for example `protonplus`). Flatpak, Homebrew and Distrobox work as usual |
