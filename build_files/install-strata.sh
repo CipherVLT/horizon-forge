@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Install Strata (https://github.com/lgse/strata, MIT), a GTK4 file manager,
+# from its official x86_64 release archive.
+#
+# strata.ref pins "<version> <sha256 of the .tar.gz>". The archive is checked
+# against that hash before anything is installed, so a changed or tampered
+# download fails the build. To update: put the new version and the hash from
+# the release's .tar.gz.sha256 asset into strata.ref.
+#
+# Strata becomes the default folder handler only in the Hyprland (Event
+# Horizon) session, via hyprland-mimeapps.list. Plasma keeps Dolphin. Its
+# org.freedesktop.FileManager1 D-Bus service and file-chooser portal are not
+# installed, because both would also take over from Dolphin under Plasma.
+set -euo pipefail
+
+read -r version sha256 < /ctx/strata.ref
+arch=$(uname -m)
+if [[ "${arch}" != x86_64 ]]; then
+    echo "Strata: no ${arch} build pinned, skipping" >&2
+    exit 0
+fi
+
+package="strata-${version}-x86_64-unknown-linux-gnu"
+url="https://github.com/lgse/strata/releases/download/v${version}/${package}.tar.gz"
+
+# Runtime libraries the binary links against (gtk4, gtksourceview5,
+# poppler-glib, gstreamer) and what its previews use.
+dnf5 install -y \
+    gtk4 \
+    gtksourceview5 \
+    poppler-glib \
+    graphene \
+    gstreamer1 \
+    gstreamer1-plugins-base \
+    gstreamer1-plugins-good \
+    gvfs \
+    bubblewrap \
+    ffmpegthumbnailer \
+    xdg-utils \
+    desktop-file-utils
+
+work=$(mktemp -d)
+trap 'rm -rf "${work}"' EXIT
+curl --fail --location --silent --show-error --retry 3 -o "${work}/strata.tar.gz" "${url}"
+echo "${sha256}  ${work}/strata.tar.gz" | sha256sum -c -
+tar -xzf "${work}/strata.tar.gz" -C "${work}"
+src="${work}/${package}"
+
+install -Dm755 "${src}/strata" /usr/bin/strata
+install -Dm644 "${src}/io.github.lgse.Strata.desktop" \
+    /usr/share/applications/io.github.lgse.Strata.desktop
+install -Dm644 "${src}/io.github.lgse.Strata.svg" \
+    /usr/share/icons/hicolor/scalable/apps/io.github.lgse.Strata.svg
+install -Dm644 -t /usr/share/licenses/strata \
+    "${src}/LICENSE" "${src}/THIRD_PARTY_LICENSES.md" "${src}/UnRAR.txt"
+install -Dm644 "${src}/SOURCE_COMMIT" /usr/share/licenses/strata/SOURCE_COMMIT
+
+# XDG per-desktop defaults: read only when XDG_CURRENT_DESKTOP=Hyprland.
+cat > /usr/share/applications/hyprland-mimeapps.list <<'EOF'
+[Default Applications]
+inode/directory=io.github.lgse.Strata.desktop
+EOF
+
+desktop-file-validate /usr/share/applications/io.github.lgse.Strata.desktop
+if ldd /usr/bin/strata | grep -F 'not found'; then
+    echo "Strata is missing shared libraries" >&2
+    exit 1
+fi
+echo "Installed Strata ${version} ($(cat "${src}/SOURCE_COMMIT"))"

@@ -90,6 +90,7 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 
 1. At the login screen, open the **session menu** and choose **Event Horizon**. (Plasma is in the same list.)
 2. On the first login you get:
+   - **[Strata](https://github.com/lgse/strata)** as the file manager in the Event Horizon session (Plasma keeps Dolphin).
    - A Hyprland config in `~/.config/hypr/hyprland.conf`. It's yours to edit; updates never overwrite it.
    - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
 3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
@@ -200,6 +201,7 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `build_files/build-event-horizon.sh` | Compiles Event Horizon at the pinned commit (portable CPU flags, local fixes) |
 | `build_files/build.sh` | Installs Hyprland and runtime packages, applies system tweaks |
 | `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
+| `build_files/strata.ref`, `install-strata.sh` | Strata file manager: pinned release and its checksum |
 | `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
 | `disk_config/iso.toml` | Installer (ISO) settings |
 | `.github/workflows/` | Image and ISO builds, lint (ShellCheck, actionlint) on every change, weekly Trivy vulnerability scan |
@@ -213,6 +215,7 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 - [Bazzite](https://github.com/ublue-os/bazzite) and [Universal Blue](https://universal-blue.org): the base system and the [image template](https://github.com/ublue-os/image-template) this repo started from
 - [Event Horizon Shell](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) by Ryzendrew: the desktop shell
 - [Hyprland](https://hypr.land): the compositor
+- [Strata](https://github.com/lgse/strata) by lgse: the file manager
 - [dcli-bootc](https://gitlab.com/theblackdon/dcli-bootc) by theblackdon: the profile/modules layout (`profile.yaml`, `modules/`)
 
 ## License
