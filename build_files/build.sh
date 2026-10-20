@@ -18,7 +18,17 @@ cp /usr/share/event-horizon/skel/hypr/eh/colors.conf /etc/skel/.config/hypr/eh/c
 if ! dnf5 copr --help >/dev/null 2>&1; then
     dnf5 install -y dnf5-plugins
 fi
-dnf5 copr enable -y nett00n/hyprland
+# copr.fedorainfracloud.org has short outages; retry before failing.
+for attempt in 1 2 3 4 5; do
+    if dnf5 copr enable -y nett00n/hyprland; then
+        break
+    fi
+    if (( attempt == 5 )); then
+        echo "::error title=build.sh::could not reach COPR (nett00n/hyprland) after 5 tries"
+        exit 1
+    fi
+    sleep $(( attempt * 20 ))
+done
 
 
 # Runtime packages only. Build dependencies stayed in the eh-builder stage.
