@@ -21,6 +21,8 @@
 contents = """
 # --log lands in the installed system so the install can be checked later:
 # sudo cat /var/roothome/horizon-post.log
+network --hostname=bazzite
+
 %post --erroronfail --log=/root/horizon-post.log
 set -x
 bootc switch --mutate-in-place --transport registry GHCR_IMAGE
