@@ -7,10 +7,12 @@
 # download fails the build. To update: put the new version and the hash from
 # the release's .tar.gz.sha256 asset into strata.ref.
 #
-# Strata is the second choice for folders in the Hyprland session, after
-# GNOME Files (see trim-desktop.sh, which writes hyprland-mimeapps.list). Its
-# org.freedesktop.FileManager1 D-Bus service and file-chooser portal are not
-# installed; Nautilus provides FileManager1.
+# Strata is the file manager: the folder handler in the Hyprland session
+# (trim-desktop.sh writes hyprland-mimeapps.list) and the
+# org.freedesktop.FileManager1 D-Bus service that "Show in folder" in
+# Firefox, Steam and others calls. Its file-chooser portal is left opt-in
+# (Strata > Settings > General > System file chooser); Open/Save dialogs
+# stay on the KDE portal until a user turns it on.
 set -euo pipefail
 # Show the failing line on the GitHub run page (as an annotation).
 trap 'echo "::error title=install-strata.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -56,6 +58,12 @@ install -Dm644 "${src}/io.github.lgse.Strata.svg" \
 install -Dm644 -t /usr/share/licenses/strata \
     "${src}/LICENSE" "${src}/THIRD_PARTY_LICENSES.md" "${src}/UnRAR.txt"
 install -Dm644 "${src}/SOURCE_COMMIT" /usr/share/licenses/strata/SOURCE_COMMIT
+
+# "Show in folder" from other apps. dbus-broker wants the file named after
+# the bus name it provides.
+install -Dm644 "${src}/io.github.lgse.Strata.FileManager1.service" \
+    /usr/share/dbus-1/services/org.freedesktop.FileManager1.service
+grep -q '^Exec=/usr/bin/strata ' /usr/share/dbus-1/services/org.freedesktop.FileManager1.service
 
 desktop-file-validate /usr/share/applications/io.github.lgse.Strata.desktop
 if ldd /usr/bin/strata | grep -F 'not found'; then
