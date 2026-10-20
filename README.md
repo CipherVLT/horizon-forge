@@ -92,6 +92,7 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | | Bazzite (KDE) | Bazzite Horizon |
 | --- | --- | --- |
 | Desktop | KDE Plasma | Event Horizon on Hyprland (Plasma session hidden) |
+| Login screen | Plasma Login | SDDM with the [Pixie](https://github.com/xCaptaiN09/pixie-sddm) theme, Bazzite wallpaper, 12-hour clock |
 | File manager | Dolphin | GNOME Files, plus Strata |
 | Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
 | Removed | | Kate, KDE Menu Editor, Steam starting at login, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole (kitty is the terminal), KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 configuration, Btrfs Assistant, Cardwire app (the GPU-switching service stays in the NVIDIA image for dual-GPU laptops), the Discourse forum link, Xwayland Video Bridge |
@@ -230,6 +231,7 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
 | `build_files/apps.list` | Extra apps installed system-wide. Add a line to add an app |
 | `build_files/trim-desktop.sh` | Removes the KDE apps, installs `apps.list`, opens the Terra repository, hides the Plasma session |
+| `build_files/install-greeter.sh` | Switches the login screen to SDDM with the Pixie theme (vendored in `system_files/usr/share/sddm/themes/pixie`) |
 | `build_files/strata.ref`, `install-strata.sh` | Strata file manager: pinned release and its checksum |
 | `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
 | `disk_config/iso.toml` | Installer (ISO) settings |

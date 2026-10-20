@@ -7,12 +7,13 @@
 #   and makes Nautilus the file manager.
 # - Leaves the Terra repository enabled so users can rpm-ostree install more.
 # - Hides the Plasma session from the login screen. Plasma's libraries stay
-#   installed: the login screen (Plasma Login) and parts of Bazzite use them.
+#   installed: the login screen (SDDM on KWin) and parts of Bazzite use them.
 #
 # Packages are erased with --nodeps on purpose. A normal dnf remove would also
 # remove anything that depends on them, which on a KDE base can cascade into
 # plasma-workspace and the login screen itself. The checks at the end fail
-# the build if the login screen or Hyprland session went missing.
+# the build if the Hyprland session went missing; install-greeter.sh checks
+# the login screen.
 set -euo pipefail
 # Show the failing line on the GitHub run page (as an annotation).
 trap 'echo "::error title=trim-desktop.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -214,8 +215,4 @@ test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -x /usr/bin/Hyprland
 test -x /usr/bin/nautilus
 for pkg in "${apps[@]}"; do rpm -q "${pkg}" >/dev/null; done
-if ! command -v plasmalogin >/dev/null 2>&1 && ! ls /usr/lib/systemd/system/plasmalogin.service >/dev/null 2>&1; then
-    echo "trim: the Plasma Login screen is gone; refusing to build an image nobody can log into" >&2
-    exit 1
-fi
 echo "trim: done"
