@@ -14,6 +14,8 @@
 # plasma-workspace and the login screen itself. The checks at the end fail
 # the build if the login screen or Hyprland session went missing.
 set -euo pipefail
+# Show the failing line on the GitHub run page (as an annotation).
+trap 'echo "::error title=trim-desktop.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 # --- Remove ------------------------------------------------------------------
 # Each name is only removed if installed, so a renamed or missing package is
@@ -97,9 +99,27 @@ done
 
 # --- System-wide apps (build_files/apps.list) ----------------------------------
 mapfile -t apps < <(grep -v -E '^[[:space:]]*(#|$)' /ctx/apps.list | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
-if (( ${#apps[@]} )); then
-    dnf5 install -y --enable-repo=terra "${apps[@]}"
-fi
+# One package at a time so a failure names the package. Errors are also
+# printed as GitHub annotations (::error::), which show on the workflow run
+# without opening the full log.
+install_app() {
+    local pkg=$1 log
+    log=$(mktemp)
+    # Fedora Multimedia is enabled for OBS, so it links the full-codec FFmpeg
+    # Bazzite already ships instead of pulling Fedora's ffmpeg-free.
+    if ! dnf5 install -y --enable-repo=terra --enable-repo='*fedora-multimedia*' "${pkg}" >"${log}" 2>&1; then
+        cat "${log}"
+        echo "::error title=apps.list::dnf5 could not install ${pkg}"
+        tail -n 15 "${log}" | sed 's/^/::error title=dnf5 ('"${pkg}"')::/'
+        rm -f "${log}"
+        return 1
+    fi
+    tail -n 3 "${log}"
+    rm -f "${log}"
+}
+for pkg in "${apps[@]}"; do
+    install_app "${pkg}"
+done
 
 # --- Open package repositories ----------------------------------------------------
 # Bazzite turns Terra off in the finished image, so `rpm-ostree install`
@@ -134,7 +154,7 @@ rm -f /usr/share/wayland-sessions/plasma.desktop \
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -x /usr/bin/Hyprland
 test -x /usr/bin/nautilus
-test -x /usr/bin/protonplus || rpm -q protonplus
+for pkg in "${apps[@]}"; do rpm -q "${pkg}" >/dev/null; done
 if ! command -v plasmalogin >/dev/null 2>&1 && ! ls /usr/lib/systemd/system/plasmalogin.service >/dev/null 2>&1; then
     echo "trim: the Plasma Login screen is gone; refusing to build an image nobody can log into" >&2
     exit 1

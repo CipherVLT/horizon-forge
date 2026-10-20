@@ -3,6 +3,8 @@
 # binaries staged by build-event-horizon.sh. Plasma stays installed so the
 # gear menu on the login screen can still fall back to KDE.
 set -eoux pipefail
+# Show the failing line on the GitHub run page (as an annotation).
+trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 cp -avf /ctx/system_files/. /
 chmod 0755 /usr/bin/event-horizon-session
@@ -187,5 +189,10 @@ done
 sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' /etc/yum.repos.d/*.repo
 
 bash /ctx/trim-desktop.sh
+
+# Bazzite's ujust only reads recipe files its justfile imports.
+if [[ -f /usr/share/ublue-os/justfile ]] && ! grep -q 'horizon.just' /usr/share/ublue-os/justfile; then
+    echo 'import "/usr/share/ublue-os/just/horizon.just"' >> /usr/share/ublue-os/justfile
+fi
 
 dnf5 clean all

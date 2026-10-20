@@ -9,6 +9,8 @@
 # forces a portable release build. event-horizon.ref pins the upstream
 # commit; 4a4cd77 is tag 0.9.7.4-beta-3.
 set -eoux pipefail
+# Show the failing line on the GitHub run page (as an annotation).
+trap 'echo "::error title=build-event-horizon.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 EH_REPO="${EH_REPO:-https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell.git}"
 EH_REF="$(tr -d '[:space:]' < /ctx/event-horizon.ref)"

@@ -1,6 +1,21 @@
 # Extra apps installed system-wide (RPMs) in both images.
-# One package per line. Searched in Fedora and Terra (repos.fyralabs.com).
+# One package per line. Searched in Fedora, Terra, Fedora Multimedia
+# (negativo17, full codecs).
 # Add a line, open a pull request, and every install gets it on the next
 # update. Packages that can't be found fail the build, so typos are caught.
+#
+# Heavy, occasional tools are not listed here; they install on demand with
+# ujust (see system_files/usr/share/ublue-os/just/horizon.just).
+
+# Files
 nautilus
+gedit
+
+# Web
+firefox
+
+# Create
+obs-studio
+
+# Gaming
 protonplus

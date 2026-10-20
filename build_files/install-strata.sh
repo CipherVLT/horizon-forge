@@ -12,6 +12,8 @@
 # org.freedesktop.FileManager1 D-Bus service and file-chooser portal are not
 # installed; Nautilus provides FileManager1.
 set -euo pipefail
+# Show the failing line on the GitHub run page (as an annotation).
+trap 'echo "::error title=install-strata.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 read -r version sha256 < /ctx/strata.ref
 arch=$(uname -m)
