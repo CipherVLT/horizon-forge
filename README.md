@@ -204,6 +204,7 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `disk_config/iso.toml` | Installer (ISO) settings |
 | `.github/workflows/` | Image and ISO builds, lint (ShellCheck, actionlint) on every change, weekly Trivy vulnerability scan |
 | `cook-iso.sh` | Builds an ISO on your own computer |
+| `.mcp.json` | Tools for Claude Code when working on this repo ([Sequential Thinking](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)). Not part of the image |
 
 ---
 
