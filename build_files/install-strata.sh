@@ -50,7 +50,10 @@ echo "${sha256}  ${work}/strata.tar.gz" | sha256sum -c -
 tar -xzf "${work}/strata.tar.gz" -C "${work}"
 src="${work}/${package}"
 
-install -Dm755 "${src}/strata" /usr/bin/strata
+# The binary lives in /usr/libexec; /usr/bin/strata (system_files) is a
+# wrapper that runs a copy in ~/.local/bin so Strata's own updater works.
+install -Dm755 "${src}/strata" /usr/libexec/strata/strata
+test -x /usr/bin/strata
 install -Dm644 "${src}/io.github.lgse.Strata.desktop" \
     /usr/share/applications/io.github.lgse.Strata.desktop
 install -Dm644 "${src}/io.github.lgse.Strata.svg" \
@@ -66,7 +69,7 @@ install -Dm644 "${src}/io.github.lgse.Strata.FileManager1.service" \
 grep -q '^Exec=/usr/bin/strata ' /usr/share/dbus-1/services/org.freedesktop.FileManager1.service
 
 desktop-file-validate /usr/share/applications/io.github.lgse.Strata.desktop
-if ldd /usr/bin/strata | grep -F 'not found'; then
+if ldd /usr/libexec/strata/strata | grep -F 'not found'; then
     echo "Strata is missing shared libraries" >&2
     exit 1
 fi
