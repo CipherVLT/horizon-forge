@@ -210,6 +210,12 @@ bash /ctx/install-greeter.sh
 # config after the RPM so the package's own file cannot replace it.
 # Wine is Kron4ek's prebuilt release, pinned in wine.ref.
 bash /ctx/install-wine.sh
+# Catppuccin Mocha Sapphire (GTK + Kvantum) and Conflux icons; see the script.
+bash /ctx/install-theme.sh
+chmod 0755 /usr/libexec/bazzite-horizon-apply-theme
+test -d /usr/share/icons/Conflux
+test -f /usr/share/Kvantum/catppuccin-mocha-sapphire/catppuccin-mocha-sapphire.kvconfig
+test -f /usr/share/qt6ct/colors/catppuccin-mocha-sapphire.conf
 chmod 0755 /usr/libexec/bazzite-horizon-gamemode-power
 install -Dm0644 /usr/share/bazzite-horizon/gamemode.ini /usr/share/gamemode/gamemode.ini
 rpm -q gamemode

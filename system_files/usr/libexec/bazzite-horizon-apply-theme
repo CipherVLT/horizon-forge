@@ -1,0 +1,153 @@
+#!/usr/bin/python3 -I
+"""Apply the Bazzite Horizon look to this user's settings, once.
+
+Catppuccin Mocha with the sapphire accent everywhere:
+  GTK 3/4   gsettings + ~/.config/gtk-{3,4}.0/settings.ini, and for GTK 4 /
+            libadwaita apps (which ignore GTK themes) a gtk.css that imports
+            the theme's own stylesheet
+  Qt 6      qt6ct: Kvantum style, Catppuccin color scheme, Conflux icons
+  Kvantum   theme catppuccin-mocha-sapphire
+  KDE apps  kdeglobals icon theme and widget style
+  Icons     Conflux
+
+Runs from event-horizon-session at login. A marker in
+~/.local/state/bazzite-horizon records that it ran; after that nothing is
+touched, so anything changed in Event Horizon, qt6ct or Kvantum Manager
+stays. Delete the marker to apply the defaults again. An existing gtk.css
+that this script did not write is kept as gtk.css.bak-before-catppuccin.
+"""
+
+import os
+import subprocess
+import sys
+
+VERSION = "catppuccin-mocha-sapphire-1"
+HOME = os.path.expanduser("~")
+CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+STATE = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state")
+MARKER = os.path.join(STATE, "bazzite-horizon", f"theme-{VERSION}")
+
+ICONS = "Conflux"
+KVANTUM = "catppuccin-mocha-sapphire"
+QT_COLORS = "/usr/share/qt6ct/colors/catppuccin-mocha-sapphire.conf"
+GENERATED = "/* bazzite-horizon: Catppuccin for GTK 4 / libadwaita apps */"
+
+
+def gtk_theme():
+    try:
+        with open("/usr/share/bazzite-horizon/gtk-theme", encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def set_ini(path, section, values):
+    """Set keys in one [section] of an INI-style file, keeping everything else
+    (comments, other sections, Qt's @Variant values) byte for byte."""
+    try:
+        with open(path, encoding="utf-8", errors="surrogateescape") as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        lines = []
+    header = f"[{section}]"
+    todo = dict(values)
+    out = []
+    in_section = False
+    seen_section = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if in_section:
+                out.extend(f"{k}={v}" for k, v in todo.items())
+                todo.clear()
+            in_section = stripped == header
+            seen_section = seen_section or in_section
+            out.append(line)
+            continue
+        if in_section:
+            key = line.split("=", 1)[0].strip()
+            if "=" in line and key in todo:
+                out.append(f"{key}={todo.pop(key)}")
+                continue
+        out.append(line)
+    if in_section:
+        out.extend(f"{k}={v}" for k, v in todo.items())
+    elif not seen_section:
+        if out and out[-1].strip():
+            out.append("")
+        out.append(header)
+        out.extend(f"{k}={v}" for k, v in todo.items())
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp-bazzite-horizon"
+    with open(tmp, "w", encoding="utf-8", errors="surrogateescape") as f:
+        f.write("\n".join(out) + "\n")
+    os.replace(tmp, path)
+
+
+def gsettings(key, value):
+    try:
+        subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", key, value],
+                       timeout=10, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def write_gtk4_css(theme):
+    theme_dir = f"/usr/share/themes/{theme}/gtk-4.0"
+    target_dir = os.path.join(CONFIG, "gtk-4.0")
+    os.makedirs(target_dir, exist_ok=True)
+    for name in ("gtk.css", "gtk-dark.css"):
+        src = os.path.join(theme_dir, name)
+        if not os.path.isfile(src):
+            continue
+        dst = os.path.join(target_dir, name)
+        if os.path.islink(dst):
+            os.remove(dst)
+        elif os.path.isfile(dst):
+            with open(dst, encoding="utf-8", errors="replace") as f:
+                if GENERATED not in f.read():
+                    os.replace(dst, dst + ".bak-before-catppuccin")
+        with open(dst, "w", encoding="utf-8") as f:
+            f.write(f'{GENERATED}\n@import url("file://{src}");\n')
+
+
+def main():
+    if os.path.exists(MARKER):
+        return 0
+    theme = gtk_theme()
+    if not theme or not os.path.isdir(f"/usr/share/themes/{theme}"):
+        return 0  # image without the theme: nothing to apply
+
+    gsettings("gtk-theme", theme)
+    gsettings("icon-theme", ICONS)
+    gsettings("color-scheme", "prefer-dark")
+    for ver in ("gtk-3.0", "gtk-4.0"):
+        set_ini(os.path.join(CONFIG, ver, "settings.ini"), "Settings", {
+            "gtk-theme-name": theme,
+            "gtk-icon-theme-name": ICONS,
+            "gtk-application-prefer-dark-theme": "1",
+        })
+    write_gtk4_css(theme)
+
+    set_ini(os.path.join(CONFIG, "qt6ct", "qt6ct.conf"), "Appearance", {
+        "style": "kvantum",
+        "icon_theme": ICONS,
+        "custom_palette": "true",
+        "color_scheme_path": QT_COLORS,
+    })
+    set_ini(os.path.join(CONFIG, "Kvantum", "kvantum.kvconfig"), "General", {
+        "theme": KVANTUM,
+    })
+    kdeglobals = os.path.join(CONFIG, "kdeglobals")
+    set_ini(kdeglobals, "Icons", {"Theme": ICONS})
+    set_ini(kdeglobals, "KDE", {"widgetStyle": "kvantum"})
+
+    os.makedirs(os.path.dirname(MARKER), exist_ok=True)
+    with open(MARKER, "w", encoding="utf-8") as f:
+        f.write(f"{theme}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
