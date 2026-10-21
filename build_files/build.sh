@@ -205,6 +205,18 @@ sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpg
 bash /ctx/trim-desktop.sh
 bash /ctx/install-greeter.sh
 
+# --- Gaming: GameMode power profile, Wine/NTSync -------------------------------
+# GameMode and Wine come from apps.list (installed by trim-desktop.sh). Copy
+# the config after the RPM so the package's own file cannot replace it.
+chmod 0755 /usr/libexec/bazzite-horizon-gamemode-power
+install -Dm0644 /usr/share/bazzite-horizon/gamemode.ini /usr/share/gamemode/gamemode.ini
+rpm -q gamemode wine
+test -x /usr/bin/gamemoderun
+test -x /usr/bin/wine
+test -x /usr/bin/winetricks
+test -f /usr/lib/modules-load.d/wine-ntsync.conf || \
+    echo "WARNING: base image no longer loads ntsync at boot; Wine will fall back to wineserver sync" >&2
+
 # Bazzite's ujust only reads recipe files its justfile imports.
 if [[ -f /usr/share/ublue-os/justfile ]] && ! grep -q 'horizon.just' /usr/share/ublue-os/justfile; then
     echo 'import "/usr/share/ublue-os/just/horizon.just"' >> /usr/share/ublue-os/justfile

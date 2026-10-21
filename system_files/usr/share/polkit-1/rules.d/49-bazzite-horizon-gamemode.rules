@@ -1,0 +1,26 @@
+/*
+ * Bazzite Horizon: let the person at the machine use GameMode's helpers
+ * without a password prompt or joining the "gamemode" group (which needs
+ * extra steps on an image-based system).
+ *
+ * Covers the CPU governor, platform profile, core parking, X3D cache mode
+ * and /proc/sys tweaks, plus switching the power profile (used by
+ * /usr/libexec/bazzite-horizon-gamemode-power). GPU overclocking
+ * (gpu-helper) is deliberately not included.
+ *
+ * Only local, active sessions match: not SSH, not a locked-out seat.
+ */
+polkit.addRule(function (action, subject) {
+    var allowed = [
+        "com.feralinteractive.GameMode.governor-helper",
+        "com.feralinteractive.GameMode.profile-helper",
+        "com.feralinteractive.GameMode.cpu-helper",
+        "com.feralinteractive.GameMode.x3dmode-helper",
+        "com.feralinteractive.GameMode.procsys-helper",
+        "net.hadess.PowerProfiles.switch-profile",
+        "org.freedesktop.UPower.PowerProfiles.switch-profile"
+    ];
+    if (allowed.indexOf(action.id) >= 0 && subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});
