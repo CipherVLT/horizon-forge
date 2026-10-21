@@ -1,0 +1,7 @@
+# MangoHud (and similar overlays) read CPU package power from the RAPL energy
+# counters. Since Linux 5.10 the kernel makes energy_uj root-only, so the
+# overlay shows no CPU power. Make the counters readable again.
+# Trade-off: these counters were restricted because of the PLATYPUS power
+# side-channel; on a single-user gaming desktop that risk is accepted here.
+# Remove this file (or override it in /etc/udev/rules.d) to restore root-only.
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl:*", ACTION=="add", RUN+="/usr/bin/chmod 0444 /sys%p/energy_uj"

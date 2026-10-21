@@ -31,3 +31,30 @@ horizon-vm-remove:
     sudo systemctl disable libvirtd.service || true
     rpm-ostree uninstall qemu-kvm libvirt virt-manager virt-viewer
     echo "Done. Reboot to finish."
+
+# Check the gaming setup: CPU governor, power profile, GameMode, NTSync, Wine
+horizon-gaming-check:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    cpu=/sys/devices/system/cpu/cpu0/cpufreq
+    echo "CPU driver:        $(cat $cpu/scaling_driver 2>/dev/null || echo unknown)"
+    echo "CPU governor:      $(cat $cpu/scaling_governor 2>/dev/null || echo unknown)"
+    echo "Energy preference: $(cat $cpu/energy_performance_preference 2>/dev/null || echo n/a)"
+    echo "Power profile:     $(powerprofilesctl get 2>/dev/null || tuned-adm active 2>/dev/null | sed 's/^Current active profile: //' || echo unknown)"
+    echo
+    if command -v gamemoded >/dev/null; then
+        echo "GameMode:          $(gamemoded -s 2>&1 | tail -n 1)"
+    else
+        echo "GameMode:          not installed"
+    fi
+    if [[ -e /dev/ntsync ]]; then
+        echo "NTSync:            /dev/ntsync present ($(stat -c '%A' /dev/ntsync))"
+    else
+        echo "NTSync:            /dev/ntsync missing (try: sudo modprobe ntsync)"
+    fi
+    echo "Wine:              $(wine --version 2>/dev/null || echo not installed)"
+    echo "Winetricks:        $(winetricks --version 2>/dev/null | head -n 1 || echo not installed)"
+    echo
+    echo "While a game runs with 'gamemoderun %command%', run this again:"
+    echo "the governor and energy preference should read 'performance'."
+    echo "Full self-test: gamemoded -t"

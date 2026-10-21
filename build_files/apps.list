@@ -19,3 +19,6 @@ obs-studio
 # Gaming (Steam itself already comes from Terra in Bazzite)
 protonplus
 heroic-games-launcher
+# Bazzite removes GameMode; Horizon brings it back with its own config
+# (see system_files/usr/share/bazzite-horizon/gamemode.ini).
+gamemode

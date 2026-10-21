@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Raise the power profile only while a game is running.
+#
+# GameMode calls this from the [custom] section of
+# /usr/share/gamemode/gamemode.ini:
+#   start  remember the current power profile, then switch to "performance"
+#   end    put the remembered profile back
+#
+# On Bazzite the power profiles are tuned profiles behind tuned-ppd:
+#   balanced    -> balanced-bazzite      (powersave governor / balanced EPP)
+#   performance -> throughput-performance-bazzite (performance governor/EPP)
+# With amd-pstate or intel_pstate in active mode the "powersave" governor
+# lets clocks drop between frames, which shows up as micro-stutter. Holding
+# "performance" only for the life of the game keeps idle power and fan noise
+# where they were on the desktop.
+#
+# If the profile was already "performance", nothing is remembered and the
+# end step leaves it alone. Always exits 0 so GameMode is never blocked.
+
+set -u
+
+state="${XDG_RUNTIME_DIR:-/tmp}/bazzite-horizon-gamemode-profile"
+
+# tuned-ppd answers on the current UPower name and the older hadess one.
+buses=(
+    "org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles"
+    "net.hadess.PowerProfiles /net/hadess/PowerProfiles net.hadess.PowerProfiles"
+)
+
+get_profile() {
+    local out bus
+    if command -v powerprofilesctl >/dev/null 2>&1; then
+        out=$(powerprofilesctl get 2>/dev/null) && [[ -n "$out" ]] && { echo "$out"; return 0; }
+    fi
+    for bus in "${buses[@]}"; do
+        # shellcheck disable=SC2086
+        out=$(busctl --system get-property $bus ActiveProfile 2>/dev/null) || continue
+        out=${out#s }
+        out=${out//\"/}
+        [[ -n "$out" ]] && { echo "$out"; return 0; }
+    done
+    return 1
+}
+
+set_profile() {
+    local bus
+    if command -v powerprofilesctl >/dev/null 2>&1; then
+        powerprofilesctl set "$1" 2>/dev/null && return 0
+    fi
+    for bus in "${buses[@]}"; do
+        # shellcheck disable=SC2086
+        busctl --system set-property $bus ActiveProfile s "$1" 2>/dev/null && return 0
+    done
+    echo "bazzite-horizon-gamemode-power: could not set power profile '$1'" >&2
+    return 1
+}
+
+case "${1:-}" in
+    start)
+        current=$(get_profile) || current=""
+        if [[ -n "$current" && "$current" != "performance" ]]; then
+            printf '%s\n' "$current" > "$state"
+            set_profile performance || rm -f "$state"
+        fi
+        ;;
+    end)
+        if [[ -f "$state" ]]; then
+            set_profile "$(cat "$state")"
+            rm -f "$state"
+        fi
+        ;;
+    *)
+        echo "usage: $0 start|end" >&2
+        ;;
+esac
+exit 0
