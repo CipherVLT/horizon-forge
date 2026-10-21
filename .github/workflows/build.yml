@@ -119,7 +119,7 @@ jobs:
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
       - name: Login to GitHub Container Registry
         uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: github.event_name != 'pull_request' && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || github.event_name == 'workflow_dispatch')
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -140,13 +140,27 @@ jobs:
 
           echo "digest=${digest}" >> $GITHUB_OUTPUT
 
+      # Run this workflow by hand on a branch (Actions -> Build container image ->
+      # Run workflow -> pick the branch) to publish that branch as the
+      # `testing` tag only, without touching `latest`:
+      #   sudo bootc switch ghcr.io/<owner>/<image>:testing     # try it
+      #   sudo bootc switch ghcr.io/<owner>/<image>:latest      # go back
+      - name: Push testing tag
+        if: github.event_name == 'workflow_dispatch' && github.ref != format('refs/heads/{0}', github.event.repository.default_branch)
+        id: push-testing
+        run: |
+          set -euox pipefail
+          podman tag "${IMAGE_NAME}:${DEFAULT_TAG}" "${IMAGE_NAME}:testing"
+          podman push --digestfile=/tmp/digestfile-testing "${IMAGE_NAME}:testing" "${IMAGE_REGISTRY}/${IMAGE_NAME}:testing"
+          echo "digest=$(< /tmp/digestfile-testing)" >> "$GITHUB_OUTPUT"
+
       # This section is optional and only needs to be enabled if you plan on distributing
       # your project for others to consume. You will need to create a public and private key
       # using Cosign and save the private key as a repository secret in Github for this workflow
       # to consume. For more details, review the image signing section of the README.
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: github.event_name != 'pull_request' && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || github.event_name == 'workflow_dispatch')
         with:
           # be careful when upgrading major versions
           cosign-release: 'v3.1.2'
@@ -167,5 +181,18 @@ jobs:
           # https://github.com/containers/container-libs/issues/388
           # https://github.com/coreos/rpm-ostree/issues/5509
           # use old bundle format, so we can use newer cosign 3.X.X instead of 2.X.X
+          cosign sign -y --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
+
+      - name: Sign testing image
+        if: github.event_name == 'workflow_dispatch' && github.ref != format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          DIGEST: ${{ steps.push-testing.outputs.digest }}
+        run: |
+          if [[ -z "${COSIGN_PRIVATE_KEY}" ]]; then
+            echo "SIGNING_SECRET is unset. Image was pushed unsigned."
+            exit 0
+          fi
           cosign sign -y --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
 

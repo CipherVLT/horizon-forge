@@ -1,8 +1,7 @@
 description: >
-  ryzendew Event Horizon Shell, built from the pinned commit in
-  build_files/event-horizon.ref. Fedora.md's package list, revised:
-  portable meson flags (-Dnative_march=false), JPEG on, JXL off,
-  toolchain kept out of the final image.
+  ryzendew Event Horizon (Zig rewrite), built from the pinned commit in
+  build_files/event-horizon.ref with Zig 0.16 for x86-64-v2 (portable,
+  not tuned for the build machine), toolchain kept out of the final image.
 
 depends:
   - hyprland-session
@@ -40,5 +39,5 @@ scripts:
   post: |
     # Implemented by build_files/build-event-horizon.sh in the image build.
     # Do not duplicate that compile here.
-    test -x /usr/bin/EventHorizon
-    EventHorizon --version
+    test -x /usr/bin/horizon
+    horizon --version

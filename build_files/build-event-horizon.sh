@@ -1,57 +1,60 @@
 #!/usr/bin/env bash
-# Compile Event Horizon Shell and stage it under /ehroot.
+# Compile Event Horizon (the Zig rewrite) and stage it under /ehroot.
 # The final image copies /ehroot and does not keep this toolchain.
 #
-# Upstream Fedora.md says `sudo just install`. That is correct on a personal
-# machine and wrong for a published image: `just install` leaves
-# -Dnative_march=true, which tunes the binary for the build CPU (a GitHub
-# runner) and can SIGILL everywhere else. This script pins a commit and
-# forces a portable release build. event-horizon.ref pins the upstream
-# commit; 4a4cd77 is tag 0.9.7.4-beta-3.
+# Upstream: https://github.com/Event-Horizon-desktop-environment/Event-Horizon
+# (MIT). The earlier C++/Meson repository (Event-Horizon-Shell) is gone; the
+# Zig tree replaced it. event-horizon.ref pins the upstream commit.
+#
+# Upstream's build.sh auto-detects the build CPU's x86-64 level, which would
+# tune the binaries for a GitHub runner. This script pins x86-64-v2 instead
+# (every x86-64 CPU since ~2009), so the image runs on all supported hardware.
 set -eoux pipefail
 # Show the failing line on the GitHub run page (as an annotation).
 trap 'echo "::error title=build-event-horizon.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
-EH_REPO="${EH_REPO:-https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell.git}"
+EH_REPO="${EH_REPO:-https://github.com/Event-Horizon-desktop-environment/Event-Horizon.git}"
 EH_REF="$(tr -d '[:space:]' < /ctx/event-horizon.ref)"
+EH_CPU=x86_64_v2
+
+# Zig toolchain: the release tarball from ziglang.org, verified against the
+# Zig Software Foundation's minisign key before use.
+ZIG_VERSION=0.16.0
+ZIG_PUBKEY='RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U'
 
 dnf5 install -y \
     git \
-    meson \
-    gcc \
-    gcc-c++ \
-    cmake \
-    mold \
-    ninja-build \
+    curl \
+    xz \
+    minisign \
     pkgconf-pkg-config \
-    python3 \
-    libjpeg-turbo-devel \
     wayland-devel \
     wayland-protocols-devel \
-    vulkan-loader-devel \
-    vulkan-headers \
-    freetype-devel \
-    fontconfig-devel \
+    libxkbcommon-devel \
     cairo-devel \
     pango-devel \
-    libxkbcommon-devel \
-    glib2-devel \
-    sdbus-cpp-devel \
-    pipewire-devel \
-    pam-devel \
-    polkit-devel \
-    libcurl-devel \
-    openssl-devel \
-    libwebp-devel \
-    libpng-devel \
-    lz4-devel \
-    libdrm-devel \
     librsvg2-devel \
-    ffmpegthumbnailer-devel \
-    jemalloc-devel \
-    lcms2-devel \
-    libarchive-devel \
-    poppler-glib-devel
+    libwebp-devel \
+    pipewire-devel
+
+zig_dir=/tmp/zig
+mkdir -p "${zig_dir}"
+zig_ok=0
+for name in "zig-x86_64-linux-${ZIG_VERSION}" "zig-linux-x86_64-${ZIG_VERSION}"; do
+    url="https://ziglang.org/download/${ZIG_VERSION}/${name}.tar.xz"
+    if curl --fail --location --silent --show-error --retry 3 -o "${zig_dir}/zig.tar.xz" "${url}" &&
+        curl --fail --location --silent --show-error --retry 3 -o "${zig_dir}/zig.tar.xz.minisig" "${url}.minisig"; then
+        zig_ok=1
+        break
+    fi
+done
+(( zig_ok )) || { echo "could not download Zig ${ZIG_VERSION}" >&2; exit 1; }
+minisign -V -P "${ZIG_PUBKEY}" -m "${zig_dir}/zig.tar.xz" -x "${zig_dir}/zig.tar.xz.minisig"
+sha256sum "${zig_dir}/zig.tar.xz"
+tar -xJf "${zig_dir}/zig.tar.xz" -C "${zig_dir}" --strip-components=1
+ZIG="${zig_dir}/zig"
+"${ZIG}" version
+export ZIG_GLOBAL_CACHE_DIR=/tmp/zig-global-cache ZIG_LOCAL_CACHE_DIR=/tmp/zig-local-cache
 
 src=/eh-src
 rm -rf "${src}"
@@ -63,44 +66,19 @@ git -C "${src}" checkout --detach FETCH_HEAD
 git -C "${src}" submodule update --init --recursive --depth 1
 
 cd "${src}"
-# Local patch: the desktop icon layer and the desktop widget layer are
-# full-screen surfaces, and both ask the compositor (ext-background-effect-v1)
-# to blur everything behind their whole area. On a Hyprland that implements
-# that protocol the result is a permanently blurred wallpaper. Drop those two
-# requests; popup menus keep their blur. Fails the build if upstream moves the
-# code, so the patch is re-checked instead of silently skipped.
-python3 - <<'PY'
-import pathlib, sys
-p = pathlib.Path("src/desktop_shell/desktop/core/desktop_layer.cpp")
-s = p.read_text()
-for target in (
-    "L->bgEffect = ext_background_effect_manager_v1_get_background_effect(mgr, L->surface);",
-    "L->widgetBgEffect = ext_background_effect_manager_v1_get_background_effect(mgr, L->widgetSurface);",
-):
-    if s.count(target) != 1:
-        sys.exit(f"horizon-forge blur patch: expected one '{target}' in {p}")
-    # Keep mgr referenced so -Wunused (with upstream werror) stays quiet.
-    s = s.replace(target, target.split(" = ")[0] + " = nullptr; (void)mgr; /* horizon-forge: no full-screen blur */")
-p.write_text(s)
-print("horizon-forge: patched out full-screen desktop blur")
-PY
+"${ZIG}" build -Doptimize=ReleaseFast "-Dcpu=${EH_CPU}"
 
-cd "${src}"
-meson setup build-release \
-    --buildtype=release \
-    --prefix=/usr \
-    -Dembed_assets=false \
-    -Dnative_march=false \
-    -Djpeg=true \
-    -Djxl=false \
-    -Dcpp_link_args=-fuse-ld=mold \
-    -Dc_link_args=-fuse-ld=mold \
-    -Dunity=subprojects \
-    -Dwerror=false
-
-meson compile -C build-release
+# Install exactly the binaries upstream's build.sh installs, read from it so
+# a new component is picked up automatically. The supervisor (horizon)
+# starts its components from its own directory, so they all go in /usr/bin.
+mapfile -t binaries < <(awk '/^INSTALL_BINARIES=\(/{f=1; next} f && /^\)/{exit} f {gsub(/^[ \t]+|[ \t]+$/, ""); if ($0 != "") print}' build.sh)
+(( ${#binaries[@]} > 0 )) || { echo "could not read INSTALL_BINARIES from upstream build.sh" >&2; exit 1; }
 rm -rf /ehroot
-DESTDIR=/ehroot meson install -C build-release
+install -d /ehroot/usr/bin /ehroot/usr/share
+for name in "${binaries[@]}"; do
+    install -m755 "zig-out/bin/${name}" "/ehroot/usr/bin/${name}"
+done
+"${ZIG}" build install-icons --prefix /ehroot/usr/share
 
-test -x /ehroot/usr/bin/EventHorizon
-echo "Staged Event Horizon ${EH_REF}"
+test -x /ehroot/usr/bin/horizon
+echo "Staged Event Horizon ${EH_REF}: ${binaries[*]}"
