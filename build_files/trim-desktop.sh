@@ -151,6 +151,26 @@ done
 # when my computer starts", which writes a per-user autostart entry.
 rm -f /etc/xdg/autostart/steam.desktop /etc/skel/.config/autostart/steam.desktop
 
+# Steam Big Picture Mode: a controller/TV interface for handhelds and couch
+# setups. This is a desktop image, so drop Bazzite's "Steam Big Picture Mode"
+# menu entry and its launcher, and the "Big Picture" item in Steam's
+# right-click menu. Steam itself can still switch from its View menu.
+rm -f /usr/share/applications/bazzite-steam-bpm.desktop /usr/bin/bazzite-steam-bpm
+steam_desktop=/usr/share/applications/steam.desktop
+if [[ -f "${steam_desktop}" ]]; then
+    awk '
+        /^\[/ { skip = ($0 == "[Desktop Action BigPicture]") }
+        skip { next }
+        /^Actions=/ { sub(/BigPicture;/, "") }
+        { print }
+    ' "${steam_desktop}" > "${steam_desktop}.new"
+    mv "${steam_desktop}.new" "${steam_desktop}"
+    chmod 644 "${steam_desktop}"
+    if grep -q -i -E 'bigpicture|bazzite-steam-bpm' "${steam_desktop}"; then
+        echo "::warning title=trim-desktop.sh::Big Picture is still referenced in ${steam_desktop}"
+    fi
+fi
+
 # Anything left in the menu that launches a removed program.
 for f in /usr/share/applications/*.desktop; do
     if grep -q -E '^Exec=.*\b(cardwire-gui|btrfs-assistant|rp-config|lutris|konsole|khelpcenter|kfind|kwrite|kate|kmenuedit|krfb|fcitx5|fcitx5-config-qt)\b' "${f}" \
