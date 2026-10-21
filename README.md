@@ -18,7 +18,7 @@ Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, 
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Updating](#updating)
 - [Known issues](#known-issues)
-- [Build it yourself](#build-it-yourself)
+- [Making your own](#making-your-own)
 - [Repository layout](#repository-layout)
 - [Credits](#credits)
 
@@ -77,7 +77,7 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | Login screen | Plasma Login | SDDM with the [Pixie](https://github.com/xCaptaiN09/pixie-sddm) theme, Bazzite wallpaper, 12-hour clock |
 | File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
 | Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
-| Removed | | Kate, KDE Menu Editor, Steam starting at login, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole (kitty is the terminal), KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 configuration, Btrfs Assistant, Cardwire app (the GPU-switching service stays in the NVIDIA image for dual-GPU laptops), the Discourse forum link, Xwayland Video Bridge |
+| Removed | | Kate, KDE Menu Editor, Steam starting at login, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole (kitty is the terminal), KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 (Chinese/Japanese/Korean input methods), Btrfs Assistant, Cardwire app (the GPU-switching service stays in the NVIDIA image for dual-GPU laptops), the Discourse forum link, Xwayland Video Bridge |
 | Added (system packages) | | Firefox, OBS Studio, gedit, ProtonPlus, Heroic Games Launcher, Strata |
 | Codecs | Full (FFmpeg, H.264/H.265, AAC, hardware video decode) | Same, unchanged |
 | Virtual machines | `ujust setup-virtualization` (Flatpak) | `ujust horizon-vm` installs QEMU/KVM and virt-manager as system packages, on demand |
@@ -161,45 +161,9 @@ Found something new? [Open an issue](https://github.com/CipherVLT/horizon-forge/
 
 ---
 
-## Build it yourself
+## Making your own
 
-Fork this repository to publish your own copy.
-
-1. **Fork** the repo and enable **Actions**.
-2. In `image-template.env`, set `REPO_ORGANIZATION` to your GitHub username.
-3. *(Optional)* Sign your images. Create a key with `COSIGN_PASSWORD="" cosign generate-key-pair` and save the contents of `cosign.key` as the repository secret `SIGNING_SECRET`. Never commit `cosign.key`.
-4. Push to `main`. **Build container image** builds both images (about 15–25 minutes).
-5. **Make the images public.** Go to your GitHub profile → **Packages** → `bazzite-horizon` → **Package settings** → **Change visibility** → **Public**. Repeat for `bazzite-horizon-nvidia`. If you skip this, installed computers can't download updates.
-6. For an ISO: **Actions → Build disk images → Run workflow**, choose the image, platform `amd64`.
-
-To build on your own computer instead (needs `podman`, `git`, `just` and about 80 GB free):
-
-```bash
-just cook-iso amd        # or: just cook-iso nvidia
-just cook-iso amd pull   # reuse the published image instead of compiling
-```
-
-The ISO is written to `output/install.iso`.
-
-### Publishing ISOs (Cloudflare R2)
-
-GitHub can't host the ISOs permanently (release files are capped at 2 GB, and Actions artifacts expire). The **Build disk images** workflow can publish them to Cloudflare R2 instead, at fixed links that are replaced on every upload:
-
-`bazzite-horizon-latest.iso` and `bazzite-horizon-nvidia-latest.iso`, each with a `.sha256` checksum.
-
-One-time setup:
-
-1. In the [Cloudflare dashboard](https://dash.cloudflare.com), open **R2** and create a bucket (for example `horizon-forge`).
-2. In the bucket's **Settings**, turn on **Public Development URL** (`https://pub-….r2.dev`), or connect your own domain.
-3. **R2 → Manage API tokens → Create API token**: permission **Object Read & Write**, limited to that bucket. Copy the **Access Key ID** and **Secret Access Key**.
-4. In this repository: **Settings → Secrets and variables → Actions**.
-   - **Secrets:** `R2_ACCOUNT_ID` (shown on the R2 overview page), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
-   - **Variables:** `R2_PUBLIC_URL`, the public URL from step 2.
-5. Run **Build disk images** with **Publish the ISO to Cloudflare R2** ticked, once per image.
-
-R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 12 GB, so expect a few cents a month for the extra space.
-
-**Updating Event Horizon:** put the new commit hash in [`build_files/event-horizon.ref`](build_files/event-horizon.ref) and push.
+Bazzite Horizon is built from Universal Blue's [image-template](https://github.com/ublue-os/image-template). Start there to build a custom image of your own.
 
 ---
 
@@ -218,7 +182,6 @@ R2's free tier includes 10 GB of storage and free downloads. Two ISOs are about 
 | `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
 | `disk_config/iso.toml` | Installer (ISO) settings |
 | `.github/workflows/` | Image and ISO builds, lint (ShellCheck, actionlint) on every change, weekly Trivy vulnerability scan |
-| `cook-iso.sh` | Builds an ISO on your own computer |
 | `.mcp.json` | Tools for Claude Code when working on this repo ([Sequential Thinking](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)). Not part of the image |
 
 ---
