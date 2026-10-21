@@ -14,8 +14,6 @@ Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, 
 - [Pick your image](#pick-your-image)
 - [What's different from Bazzite](#whats-different-from-bazzite)
 - [Install](#install)
-  - [Option A: Switch from Bazzite (recommended)](#option-a-switch-from-bazzite-recommended)
-  - [Option B: Fresh install from an ISO](#option-b-fresh-install-from-an-iso)
 - [First login](#first-login)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Updating](#updating)
@@ -41,23 +39,7 @@ On laptops with two GPUs (for example Intel + RTX), the desktop runs on the inte
 
 ## Install
 
-### Option A: Switch from Bazzite (recommended)
-
-If the computer already runs Bazzite (or any other Universal Blue / bootc image), you don't need a USB stick. Open a terminal and run the line for your graphics:
-
-```bash
-# AMD / Intel
-sudo bootc switch ghcr.io/ciphervlt/bazzite-horizon:latest
-
-# NVIDIA
-sudo bootc switch ghcr.io/ciphervlt/bazzite-horizon-nvidia:latest
-```
-
-Reboot when it finishes. To go back to stock Bazzite later, run `sudo bootc switch ghcr.io/ublue-os/bazzite:stable` (or `bazzite-nvidia-open:stable`) and reboot.
-
-### Option B: Fresh install from an ISO
-
-Use this for a blank disk or a computer without Bazzite.
+Bazzite Horizon is installed from its ISO.
 
 **1. Download the ISO**
 
