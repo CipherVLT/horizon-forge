@@ -5,7 +5,7 @@
 Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, the BORE-scheduled kernel, drivers, and automatic updates. On top of that it is set up for **creators and coders**: a single desktop, **Event Horizon** on Hyprland, without the KDE apps it replaces, and package repositories left open so you can install software system-wide.
 
 > [!WARNING]
-> Event Horizon is in **beta**. Expect rough edges. See [Known issues](#known-issues).
+> Event Horizon is in **beta**. Expect rough edges.
 
 ---
 
@@ -17,7 +17,6 @@ Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, 
 - [First login](#first-login)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Updating](#updating)
-- [Known issues](#known-issues)
 - [Making your own](#making-your-own)
 - [Credits](#credits)
 
@@ -141,22 +140,6 @@ sudo bootc upgrade    # system image only
 If an update ever misbehaves, pick the previous entry in the boot menu, or run `sudo bootc rollback` and reboot.
 
 `ujust horizon-info` shows which image and Event Horizon version you are running.
-
----
-
-## Known issues
-
-Event Horizon is beta software. These are known and reported upstream:
-
-| Issue | Workaround |
-| --- | --- |
-| Event Horizon's settings draw blank except the item under the pointer (Vulkan renderer) | New installs use the Cairo renderer. Otherwise: Settings → Panels & UI → **Shell renderer: Cairo** |
-| Event Horizon's Wi-Fi tab may not open | Wi-Fi still works. Connect with `nmtui` in a terminal |
-| Hyprland shows "*.conf config format will be removed in 0.57*" | Harmless for now. The build refuses Hyprland 0.57 until the config moves to Lua, so an update can't break your desktop |
-
-Already fixed in this image: blurred wallpaper and desktop icons, the Xwayland Video Bridge popup, Hyprland config errors and startup warnings.
-
-Found something new? [Open an issue](https://github.com/CipherVLT/horizon-forge/issues) and include your GPU and a photo of the error.
 
 ---
 
