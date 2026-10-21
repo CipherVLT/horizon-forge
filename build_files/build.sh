@@ -223,5 +223,9 @@ test -f /usr/lib/modules-load.d/wine-ntsync.conf || \
 if [[ -f /usr/share/ublue-os/justfile ]] && ! grep -q 'horizon.just' /usr/share/ublue-os/justfile; then
     echo 'import "/usr/share/ublue-os/just/horizon.just"' >> /usr/share/ublue-os/justfile
 fi
+# Fail the build, not the user's `ujust`, if a recipe file does not parse.
+if command -v just >/dev/null 2>&1 && [[ -f /usr/share/ublue-os/justfile ]]; then
+    just --justfile /usr/share/ublue-os/justfile --summary >/dev/null
+fi
 
 dnf5 clean all
