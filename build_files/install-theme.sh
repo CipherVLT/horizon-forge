@@ -105,7 +105,7 @@ fetch_git "${work}/qt5ct" https://github.com/catppuccin/qt5ct "$(ref catppuccin-
 install -Dm644 "${work}/qt5ct/themes/catppuccin-mocha-sapphire.conf" \
     /usr/share/qt6ct/colors/catppuccin-mocha-sapphire.conf
 
-ls /usr/lib64/qt6/plugins/styles/ | grep -qi kvantum
+compgen -G "/usr/lib64/qt6/plugins/styles/*kvantum*" >/dev/null
 
 # Breeze and Oxygen widget styles (Qt 5 and 6). KDE apps fall back to the
 # configured style (Kvantum) instead.
