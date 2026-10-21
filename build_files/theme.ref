@@ -1,0 +1,5 @@
+# <component> <ref> [sha256]. Commits pin git sources; the GTK zip is pinned by hash.
+conflux c175e0e550c8970fe9cb8484afe44188a8ea589f
+catppuccin-kvantum 71105d224fef95dd023691303477ce3eea487457
+catppuccin-qt5ct cb585307edebccf74b8ae8f66ea14f21e6666535
+catppuccin-gtk v1.0.3 67fab5df50b833dc2cfa5283038cfbe2f3eafbb6a533ac123d4d556dfe02820b
