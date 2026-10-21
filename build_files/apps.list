@@ -22,6 +22,3 @@ heroic-games-launcher
 # Bazzite removes GameMode; Horizon brings it back with its own config
 # (see system_files/usr/share/bazzite-horizon/gamemode.ini).
 gamemode
-# Wine 11+ uses the kernel's NTSync (/dev/ntsync) automatically; Bazzite
-# already loads the ntsync module and ships winetricks.
-wine

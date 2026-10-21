@@ -76,7 +76,7 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
 | Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
 | Removed | | Kate, KDE Menu Editor, Steam starting at login, Steam Big Picture Mode menu entries, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole (kitty is the terminal), KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 (Chinese/Japanese/Korean input methods), Btrfs Assistant, Cardwire app (the GPU-switching service stays in the NVIDIA image for dual-GPU laptops), the Discourse forum link, Xwayland Video Bridge |
-| Added (system packages) | | Firefox, OBS Studio, gedit, ProtonPlus, Heroic Games Launcher, Strata, GameMode, Wine (with NTSync) |
+| Added (system packages) | | Firefox, OBS Studio, gedit, ProtonPlus, Heroic Games Launcher, Strata, GameMode, Wine (latest development release from [Kron4ek](https://github.com/Kron4ek/Wine-Builds), NTSync on) |
 | CPU while gaming | `powersave` governor, balanced profile all the time (GameMode removed) | GameMode switches to the `performance` governor and power profile while a game runs, then restores your profile. Use `gamemoderun %command%` in Steam's Launch Options |
 | MangoHud CPU power | Not shown (RAPL counters are root-only) | Shown |
 | Codecs | Full (FFmpeg, H.264/H.265, AAC, hardware video decode) | Same, unchanged |

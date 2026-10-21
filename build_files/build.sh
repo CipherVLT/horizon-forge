@@ -206,11 +206,13 @@ bash /ctx/trim-desktop.sh
 bash /ctx/install-greeter.sh
 
 # --- Gaming: GameMode power profile, Wine/NTSync -------------------------------
-# GameMode and Wine come from apps.list (installed by trim-desktop.sh). Copy
-# the config after the RPM so the package's own file cannot replace it.
+# GameMode comes from apps.list (installed by trim-desktop.sh). Copy the
+# config after the RPM so the package's own file cannot replace it.
+# Wine is Kron4ek's prebuilt release, pinned in wine.ref.
+bash /ctx/install-wine.sh
 chmod 0755 /usr/libexec/bazzite-horizon-gamemode-power
 install -Dm0644 /usr/share/bazzite-horizon/gamemode.ini /usr/share/gamemode/gamemode.ini
-rpm -q gamemode wine
+rpm -q gamemode
 test -x /usr/bin/gamemoderun
 test -x /usr/bin/wine
 test -x /usr/bin/winetricks
