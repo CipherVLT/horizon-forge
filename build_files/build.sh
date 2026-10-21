@@ -9,6 +9,8 @@ trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 cp -avf /ctx/system_files/. /
 chmod 0755 /usr/bin/event-horizon-session
 chmod 0755 /usr/libexec/bazzite-horizon-sdboot-sync
+chmod 0755 /usr/bin/strata /usr/libexec/bazzite-horizon-strata-theme
+systemctl --global enable bazzite-horizon-strata-theme.path
 
 
 install -d /etc/skel/.config/hypr/eh
@@ -133,6 +135,8 @@ fi
 /usr/bin/EventHorizon --version
 test -x /usr/bin/event-horizon-session
 test -x /usr/bin/strata
+test -x /usr/libexec/strata/strata
+test -x /usr/bin/python3
 test -f /usr/share/wallpapers/convergence.png
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -f /usr/share/event-horizon/skel/hypr/hyprland.conf

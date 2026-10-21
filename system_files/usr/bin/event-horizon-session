@@ -86,6 +86,10 @@ gpu_conf="${config_home}/hypr/eh/gpu.conf"
     fi
 } > "${gpu_conf}"
 
+# Strata draws its own colors; match them to the GTK theme (also re-run by
+# bazzite-horizon-strata-theme.path when the theme changes).
+/usr/libexec/bazzite-horizon-strata-theme >/dev/null 2>&1 &
+
 # start-hyprland is Hyprland's own launcher (crash recovery, safe mode);
 # starting the compositor binary directly triggers a startup warning.
 if command -v start-hyprland >/dev/null 2>&1; then
