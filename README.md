@@ -19,7 +19,6 @@ Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, 
 - [Updating](#updating)
 - [Known issues](#known-issues)
 - [Making your own](#making-your-own)
-- [Repository layout](#repository-layout)
 - [Credits](#credits)
 
 ---
@@ -163,26 +162,16 @@ Found something new? [Open an issue](https://github.com/CipherVLT/horizon-forge/
 
 ## Making your own
 
-Bazzite Horizon is built from Universal Blue's [image-template](https://github.com/ublue-os/image-template). Start there to build a custom image of your own.
+Want your own custom Bazzite, or another Fedora Atomic system? Universal Blue's **[image-template](https://github.com/ublue-os/image-template)** is where to start. In short:
 
----
+1. On the image-template page, click **Use this template** to make your own copy, then turn on workflows in its **Actions** tab.
+2. Pick a starting system on the `FROM` line of the `Containerfile`, for example `ghcr.io/ublue-os/bazzite:stable`, `ghcr.io/ublue-os/aurora:stable`, `ghcr.io/ublue-os/bluefin:stable` or `quay.io/fedora/fedora-bootc:44`.
+3. Set your image name and GitHub username in `image-template.env`.
+4. Add your packages and tweaks to `build_files/build.sh`.
+5. Push. GitHub builds the image for you.
+6. Switch an installed system to it with `sudo bootc switch ghcr.io/<your-username>/<image-name>`, or build an installer ISO with the template's disk workflow.
 
-## Repository layout
-
-| Path | What it does |
-| --- | --- |
-| `Containerfile` | Starts from Bazzite, compiles Event Horizon in a separate stage, copies in the result |
-| `build_files/build-event-horizon.sh` | Compiles Event Horizon at the pinned commit (portable CPU flags, local fixes) |
-| `build_files/build.sh` | Installs Hyprland and runtime packages, applies system tweaks |
-| `build_files/event-horizon.ref` | The Event Horizon commit that gets built |
-| `build_files/apps.list` | Extra apps installed system-wide. Add a line to add an app |
-| `build_files/trim-desktop.sh` | Removes the KDE apps, installs `apps.list`, opens the Terra repository, hides the Plasma session |
-| `build_files/install-greeter.sh` | Switches the login screen to SDDM with the Pixie theme (vendored in `system_files/usr/share/sddm/themes/pixie`) |
-| `build_files/strata.ref`, `install-strata.sh` | Strata file manager: pinned release and its checksum |
-| `system_files/` | Files copied into the image: login session, default Hyprland config, helpers |
-| `disk_config/iso.toml` | Installer (ISO) settings |
-| `.github/workflows/` | Image and ISO builds, lint (ShellCheck, actionlint) on every change, weekly Trivy vulnerability scan |
-| `.mcp.json` | Tools for Claude Code when working on this repo ([Sequential Thinking](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)). Not part of the image |
+The [image-template README](https://github.com/ublue-os/image-template#readme) covers each step, including image signing.
 
 ---
 
