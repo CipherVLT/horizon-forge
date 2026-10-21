@@ -42,7 +42,11 @@ remove=(
     'kmenuedit'
     'rom-properties.*'
     'lutris'
-    'fcitx5-configtool' 'kcm-fcitx5'
+    # Fcitx 5 is for Chinese/Japanese/Korean typing. Without its KDE settings
+    # page it only opened a "fcitx5-config-qt couldn't be found" dialog.
+    # Bring it back with: rpm-ostree install fcitx5 fcitx5-mozc (or another
+    # language addon).
+    'fcitx5(-.*)?' 'kcm-fcitx5' 'libime'
     'btrfs-assistant'
     'cardwire-gui'
 )
@@ -72,6 +76,9 @@ case "${BAZZITE_HORIZON_BASE:-}" in
     *nvidia*) ;;
     *) rm -f /etc/systemd/system/*.wants/cardwired.service ;;
 esac
+
+# Fcitx 5's login autostart, if the package left it behind.
+rm -f /etc/xdg/autostart/org.fcitx.Fcitx5.desktop
 
 # Leftover enable links for removed services.
 rm -f /etc/systemd/system/*.wants/input-remapper*.service \
@@ -125,6 +132,7 @@ hide=(
     net.lutris.Lutris.desktop
     org.fcitx.fcitx5-config-qt.desktop
     org.fcitx.fcitx5-migrator.desktop
+    org.fcitx.Fcitx5.desktop
     btrfs-assistant.desktop
 )
 for id in "${hide[@]}"; do
@@ -145,7 +153,7 @@ rm -f /etc/xdg/autostart/steam.desktop /etc/skel/.config/autostart/steam.desktop
 
 # Anything left in the menu that launches a removed program.
 for f in /usr/share/applications/*.desktop; do
-    if grep -q -E '^Exec=.*\b(cardwire-gui|btrfs-assistant|rp-config|lutris|konsole|khelpcenter|kfind|kwrite|kate|kmenuedit|krfb|fcitx5-config-qt)\b' "${f}" \
+    if grep -q -E '^Exec=.*\b(cardwire-gui|btrfs-assistant|rp-config|lutris|konsole|khelpcenter|kfind|kwrite|kate|kmenuedit|krfb|fcitx5|fcitx5-config-qt)\b' "${f}" \
         && ! grep -q '^NoDisplay=true' "${f}"; then
         sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nNoDisplay=true/' "${f}"
         echo "trim: hidden $(basename "${f}")"
