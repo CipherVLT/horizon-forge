@@ -89,6 +89,8 @@ Optional, installed only when you want them (keeps the ISO small):
 
 ```bash
 ujust horizon-gaming-check  # governor, power profile, GameMode, NTSync, Wine
+ujust horizon-yabridge      # Windows VST/CLAP plugins (Serum, ...) in Linux DAWs
+ujust horizon-bitwig        # Bitwig Studio from its official .deb, into your home folder
 ujust horizon-vm          # QEMU/KVM + virt-manager, then reboot
 ujust horizon-vm-remove   # undo
 ```

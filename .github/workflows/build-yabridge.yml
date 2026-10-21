@@ -1,0 +1,112 @@
+---
+# Builds yabridge (https://github.com/robbert-vdh/yabridge, GPL-3.0) from the
+# upstream commit pinned in .github/yabridge.ref and, when run by hand on
+# main, publishes it as a release of this repository. `ujust horizon-yabridge`
+# installs the newest such release.
+#
+# Why not upstream's release: yabridge 5.1.1 (the last release) breaks mouse
+# input in plugin windows on Wine 9.22 and newer, and Bazzite Horizon ships
+# Wine 11.x. The fix is on upstream master, whose development builds need a
+# GitHub login to download. To update: put a newer upstream commit in
+# .github/yabridge.ref and run this workflow.
+name: Build yabridge
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/yabridge.ref'
+      - '.github/workflows/build-yabridge.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build yabridge
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Fetch pinned yabridge source
+        run: |
+          set -euo pipefail
+          commit=$(tr -d '[:space:]' < .github/yabridge.ref)
+          git init -q yabridge-src
+          git -C yabridge-src remote add origin https://github.com/robbert-vdh/yabridge
+          # Full history: git describe names the build (e.g. 5.1.1-37-gb580a9f).
+          git -C yabridge-src fetch -q --tags origin "${commit}"
+          git -C yabridge-src checkout -q FETCH_HEAD
+          version=$(git -C yabridge-src describe --tags --always "${commit}")
+          echo "COMMIT=${commit}" >> "$GITHUB_ENV"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      # Same container and steps as upstream's own CI build (Ubuntu 20.04
+      # with a matching Wine toolchain), so the binaries work on any newer
+      # distro, Fedora included.
+      - name: Build yabridge
+        run: |
+          set -euo pipefail
+          docker run --rm -v "${PWD}/yabridge-src:/src" -w /src \
+            robbert/docker-yabridge:focal bash -euo pipefail -c '
+              mkdir -p /tmp/prefix
+              export WINEPREFIX=/tmp/prefix
+              meson setup build --buildtype=release --cross-file=cross-wine.conf \
+                --unity=on --unity-size=10000 -Dbitbridge=true
+              ninja -C build
+              strip build/libyabridge{,-chainloader}-{clap,vst2,vst3}.so build/yabridge-host{,-32}.exe.so
+              chown -R '"$(id -u):$(id -g)"' build
+            '
+
+      - name: Build yabridgectl
+        working-directory: yabridge-src/tools/yabridgectl
+        run: |
+          set -euo pipefail
+          cargo build --release --locked
+          strip target/release/yabridgectl
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          archive="yabridge-${VERSION}.tar.gz"
+          mkdir -p dist/yabridge
+          src=yabridge-src
+          cp "${src}"/build/libyabridge{,-chainloader}-{clap,vst2,vst3}.so dist/yabridge/
+          cp "${src}"/build/yabridge-host{,-32}.exe{,.so} dist/yabridge/
+          cp "${src}/tools/yabridgectl/target/release/yabridgectl" dist/yabridge/
+          cp "${src}/CHANGELOG.md" "${src}/README.md" "${src}/COPYING" dist/yabridge/
+          tar -C dist -czf "${archive}" yabridge
+          sha256sum "${archive}" > "${archive}.sha256"
+          cat "${archive}.sha256"
+          echo "ARCHIVE=${archive}" >> "$GITHUB_ENV"
+
+      - name: Publish release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="yabridge-${VERSION}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; nothing to publish."
+            exit 0
+          fi
+          notes="yabridge built from upstream commit [${COMMIT}](https://github.com/robbert-vdh/yabridge/tree/${COMMIT}) (GPL-3.0; source at that link).
+
+          Installed by \`ujust horizon-yabridge\` on Bazzite Horizon. Not an official yabridge release."
+          gh release create "${tag}" "${ARCHIVE}" "${ARCHIVE}.sha256" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "yabridge ${VERSION}" \
+            --notes "${notes}" \
+            --latest=false
