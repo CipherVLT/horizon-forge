@@ -4,7 +4,7 @@
 
 Bazzite Horizon reshapes Bazzite into a complete desktop distro for **gamers, creators and coders**:
 
-- **Install apps system-wide.** The **Terra** repository is turned back on, so `rpm-ostree install` finds apps that stock Bazzite only offers as Flatpaks, such as ProtonPlus.
+- **Install apps system-wide, no reboot.** `ujust horizon-install <app>` installs from Fedora or Terra and the app is ready right away. Terra is turned back on, so it finds apps that stock Bazzite only offers as Flatpaks, such as ProtonPlus and Discord.
 - **Full speed while gaming.** Instead of staying on Bazzite's power-saving defaults, **GameMode** switches the CPU to the `performance` governor and power profile while a game runs, then returns to balanced.
 - **No bloat.** The KDE Plasma apps and the handheld-focused Bazzite extras are gone, leaving one desktop: **Event Horizon** on Hyprland.
 
@@ -87,21 +87,36 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | MangoHud CPU power | Not shown (RAPL counters are root-only) | Shown |
 | Codecs | Full (FFmpeg, H.264/H.265, AAC, hardware video decode) | Same, unchanged |
 | Virtual machines | `ujust setup-virtualization` (Flatpak) | `ujust horizon-vm` installs QEMU/KVM and virt-manager as system packages, on demand |
-| Installing software | Flatpak first; `rpm-ostree install` only sees Fedora | The **Terra** repository is left on, so `rpm-ostree install` finds far more apps (for example `protonplus`). Flatpak, Homebrew and Distrobox work as usual |
+| Installing software | Flatpak first; `rpm-ostree install` only sees Fedora and needs a reboot | **Fedora and Terra first**: `ujust horizon-install <app>` installs system-wide and works immediately, no reboot. Flatpak, Homebrew and Distrobox still work, as optional extras |
 
 Bazzite already ships the full codec set Nobara is known for (FFmpeg from Fedora Multimedia, OpenH264, hardware video decoding), so nothing extra is needed for video, streaming or editing.
 
 Optional, installed only when you want them (keeps the ISO small):
 
 ```bash
+ujust horizon-install <app> # install apps from Fedora/Terra, no reboot
+ujust horizon-remove <app>  # remove them again (after a reboot)
 ujust horizon-gaming-check  # governor, power profile, GameMode, NTSync, Wine
 ujust horizon-yabridge      # Windows VST/CLAP plugins (Serum, ...) in Linux DAWs
 ujust horizon-bitwig        # Bitwig Studio from its official .deb, into your home folder
-ujust horizon-vm          # QEMU/KVM + virt-manager, then reboot
-ujust horizon-vm-remove   # undo
+ujust horizon-vm            # QEMU/KVM + virt-manager, then reboot
+ujust horizon-vm-remove     # undo
 ```
 
-`rpm-ostree install <package>` adds a system package that survives updates. Use it for things you want system-wide; every layered package is reapplied on each update, so a handful is fine.
+### Installing apps
+
+Install apps from **Fedora and Terra first**. They install system-wide, like on any other Fedora or Arch system, and stay through every update:
+
+```bash
+ujust horizon-install discord             # one app
+ujust horizon-install obs-studio gimp     # several at once
+dnf search <word>                         # find a package's name
+ujust horizon-remove discord              # remove it again
+```
+
+**No reboot needed.** On Bazzite, `rpm-ostree install` normally only takes effect at the next boot; `horizon-install` switches the running system over immediately, so the app is ready right away. If a system update is already waiting for a reboot, or the package is a driver, it tells you a reboot is needed instead. Removing an app does take effect at the next reboot.
+
+**Flatpak is optional**, for when you specifically want it: an app that only exists as a Flatpak, or one you want sandboxed. The Flathub store and `flatpak install` work as usual. For Arch packages and the AUR, Distrobox can run Arch with `yay` alongside the system.
 
 ---
 
