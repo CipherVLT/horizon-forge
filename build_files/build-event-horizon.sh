@@ -104,6 +104,29 @@ p.write_text(s)
 print("horizon-forge: patched double free in live_audio.query")
 PY
 
+# Local patch: the network/Bluetooth card ("pear") and the control-center
+# panel open as overlay layers with EXCLUSIVE keyboard interactivity. While an
+# exclusive layer is mapped, Hyprland routes the pointer only to it, so
+# clicks on the dock (which would close the card) and everywhere else go
+# nowhere and the desktop looks frozen until Esc. The dock's other cards only
+# ask for exclusive focus when they need typing. Use ON_DEMAND (2) for these
+# two: keyboard when clicked into, the rest of the screen stays usable.
+python3 - <<'PY'
+import pathlib, sys
+want = {
+    "src/desktop_shell/pear/host.zig": 1,
+    "src/desktop_shell/controlcenter/host.zig": 2,
+}
+target = "self.surface.setKeyboardInteractivity(1);"
+for path, n in want.items():
+    p = pathlib.Path(path)
+    s = p.read_text()
+    if s.count(target) != n:
+        sys.exit(f"horizon-forge popup patch: expected {n} x '{target}' in {p}, found {s.count(target)}")
+    p.write_text(s.replace(target, "self.surface.setKeyboardInteractivity(2); // horizon-forge: on-demand, not exclusive"))
+print("horizon-forge: pear + control-center popups use on-demand keyboard focus")
+PY
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
