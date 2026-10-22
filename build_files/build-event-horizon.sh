@@ -79,6 +79,9 @@ if [[ "${EH_OPTIMIZE}" != ReleaseFast ]]; then
     grep -rl --include='*.zig' '@cImport({' src | while read -r f; do
         sed -i 's/@cImport({/@cImport({ @cUndef("_FORTIFY_SOURCE");/' "${f}"
     done
+    grep -rl --include='*.zig' '@cImport(@cInclude(' src | while read -r f; do
+        sed -i -E 's/@cImport\(@cInclude\(("[^"]+")\)\)/@cImport({ @cUndef("_FORTIFY_SOURCE"); @cInclude(\1); })/' "${f}"
+    done
 fi
 
 # Compiler errors as GitHub annotations, so they show on the run page.
