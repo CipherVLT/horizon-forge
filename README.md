@@ -2,7 +2,13 @@
 
 **[Bazzite](https://bazzite.gg) with a Hyprland desktop and the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon) shell.**
 
-Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, the BORE-scheduled kernel, drivers, and automatic updates. On top of that it is set up for **creators and coders**: a single desktop, **Event Horizon** on Hyprland, without the KDE apps it replaces, and package repositories left open so you can install software system-wide.
+Bazzite Horizon reshapes Bazzite into a complete desktop distro for **gamers, creators and coders**:
+
+- **Install apps system-wide.** The **Terra** repository is turned back on, so `rpm-ostree install` finds apps that stock Bazzite only offers as Flatpaks, such as ProtonPlus.
+- **Full speed while gaming.** Instead of staying on Bazzite's power-saving defaults, **GameMode** switches the CPU to the `performance` governor and power profile while a game runs, then returns to balanced.
+- **No bloat.** The KDE Plasma apps and the handheld-focused Bazzite extras are gone, leaving one desktop: **Event Horizon** on Hyprland.
+
+Bazzite's foundation stays: Steam, Gamescope, the BORE-scheduled kernel, drivers and automatic updates.
 
 > [!WARNING]
 > Event Horizon is in **beta**. Expect rough edges.
