@@ -234,3 +234,41 @@ horizon-bitwig-remove:
     grep -l 'local/opt/bitwig-studio' "$HOME"/.local/share/applications/*.desktop 2>/dev/null | xargs -r rm -f
     update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
     echo "Bitwig Studio removed. Your projects and ~/.BitwigStudio settings are untouched."
+
+# Install apps from Fedora or Terra, ready to use right away (no reboot). Example: ujust horizon-install discord
+horizon-install +packages:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    pkgs=({{ packages }})
+    echo "Installing ${pkgs[*]} from Fedora/Terra..."
+    # Step 1: add the packages to the system image. --idempotent: a package
+    # that is already installed is not an error. A misspelled name stops here.
+    if ! sudo rpm-ostree install --idempotent "${pkgs[@]}"; then
+        echo
+        echo "Nothing was installed. Check the package name, for example with:"
+        echo "  dnf search ${pkgs[0]}"
+        exit 1
+    fi
+    # Step 2: switch the running system over to that image now instead of at
+    # the next boot. It stays installed after reboots either way.
+    if sudo rpm-ostree apply-live; then
+        echo
+        echo "Done: ${pkgs[*]} is ready to use now, no reboot needed."
+        echo "If it doesn't show in the app menu yet, log out and back in."
+    else
+        echo
+        echo "${pkgs[*]} is installed, but couldn't be switched on live."
+        echo "This happens when a system update is already waiting for a reboot,"
+        echo "or for packages like drivers that need one. Reboot to start using it."
+    fi
+
+# Remove apps installed with horizon-install (takes effect after a reboot). Example: ujust horizon-remove discord
+horizon-remove +packages:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    pkgs=({{ packages }})
+    if sudo rpm-ostree uninstall "${pkgs[@]}"; then
+        echo
+        echo "${pkgs[*]} will be gone after your next reboot."
+        echo "(Removing needs a reboot; installing with horizon-install does not.)"
+    fi
