@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Take a screenshot and open it in Satty to annotate, copy or save.
+#   horizon-screenshot          drag a box (Super+Shift+S)
+#   horizon-screenshot full     every screen (Print)
+# Save writes ~/Pictures/Screenshots/Screenshot_<date>_<time>.png;
+# Save as asks where. Copy puts it on the clipboard. Esc cancels.
+set -euo pipefail
+
+pictures=$(xdg-user-dir PICTURES 2>/dev/null || true)
+[[ -n "${pictures}" && "${pictures}" != "${HOME}" ]] || pictures="${HOME}/Pictures"
+dir="${pictures}/Screenshots"
+mkdir -p "${dir}"
+
+case "${1:-region}" in
+    full)
+        shot() { grim -t ppm -; }
+        ;;
+    *)
+        # Dim the screen, white selection box. Esc or right-click cancels.
+        geom=$(slurp -d -b '#00000088' -c '#ffffffff' -s '#00000000' -w 2) || exit 0
+        shot() { grim -g "${geom}" -t ppm -; }
+        ;;
+esac
+
+shot | satty \
+    --filename - \
+    --fullscreen \
+    --initial-tool pointer \
+    --copy-command wl-copy \
+    --early-exit all \
+    --output-filename "${dir}/Screenshot_%Y-%m-%d_%H-%M-%S.png"

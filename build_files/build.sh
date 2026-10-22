@@ -7,7 +7,7 @@ set -eoux pipefail
 trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 cp -avf /ctx/system_files/. /
-chmod 0755 /usr/bin/event-horizon-session /usr/bin/EventHorizon
+chmod 0755 /usr/bin/event-horizon-session /usr/bin/EventHorizon /usr/bin/horizon-screenshot
 chmod 0755 /usr/libexec/bazzite-horizon-sdboot-sync
 chmod 0755 /usr/bin/strata /usr/libexec/bazzite-horizon-strata-theme
 systemctl --global enable bazzite-horizon-strata-theme.path
@@ -213,11 +213,14 @@ bash /ctx/install-greeter.sh
 # config after the RPM so the package's own file cannot replace it.
 # Wine is Kron4ek's prebuilt release, pinned in wine.ref.
 bash /ctx/install-wine.sh
+# Screenshot editor for Super+Shift+S (horizon-screenshot); see the script.
+bash /ctx/install-satty.sh
 chmod 0755 /usr/libexec/bazzite-horizon-gamemode-power
 install -Dm0644 /usr/share/bazzite-horizon/gamemode.ini /usr/share/gamemode/gamemode.ini
 rpm -q gamemode
 test -x /usr/bin/gamemoderun
 test -x /usr/bin/wine
+for tool in grim slurp wl-copy satty horizon-screenshot xdg-user-dir; do command -v "${tool}" >/dev/null || { echo "missing ${tool}" >&2; exit 1; }; done
 test -x /usr/bin/winetricks
 test -f /usr/lib/modules-load.d/wine-ntsync.conf || \
     echo "WARNING: base image no longer loads ntsync at boot; Wine will fall back to wineserver sync" >&2
