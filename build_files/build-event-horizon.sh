@@ -16,6 +16,11 @@ trap 'echo "::error title=build-event-horizon.sh::line ${LINENO}: ${BASH_COMMAND
 EH_REPO="${EH_REPO:-https://github.com/Event-Horizon-desktop-environment/Event-Horizon.git}"
 EH_REF="$(tr -d '[:space:]' < /ctx/event-horizon.ref)"
 EH_CPU=x86_64_v2
+# TEMPORARY for the testing image: ReleaseSafe keeps Zig's safety checks and
+# its checking allocator, so the dock's double free (glibc abort in
+# Dock.pollCcLive) prints the exact file and line. Back to ReleaseFast before
+# this branch merges.
+EH_OPTIMIZE=ReleaseSafe
 
 # Zig toolchain: the release tarball from ziglang.org, verified against the
 # Zig Software Foundation's minisign key before use.
@@ -66,7 +71,7 @@ git -C "${src}" checkout --detach FETCH_HEAD
 git -C "${src}" submodule update --init --recursive --depth 1
 
 cd "${src}"
-"${ZIG}" build -Doptimize=ReleaseFast "-Dcpu=${EH_CPU}"
+"${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}"
 
 # Install exactly the binaries upstream's build.sh installs, read from it so
 # a new component is picked up automatically. The supervisor (horizon)
