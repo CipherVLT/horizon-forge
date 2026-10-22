@@ -71,7 +71,12 @@ git -C "${src}" checkout --detach FETCH_HEAD
 git -C "${src}" submodule update --init --recursive --depth 1
 
 cd "${src}"
-"${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}"
+# Compiler errors as GitHub annotations, so they show on the run page.
+if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
+    cat /tmp/zig-build.err >&2
+    grep -E 'error:|note:' /tmp/zig-build.err | head -n 12 | sed 's/^/::error title=zig build::/'
+    exit 1
+fi
 
 # Install exactly the binaries upstream's build.sh installs, read from it so
 # a new component is picked up automatically. The supervisor (horizon)
