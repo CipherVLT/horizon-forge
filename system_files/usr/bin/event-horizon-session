@@ -14,7 +14,7 @@ cd "${HOME}" || true
 config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
 skel=/usr/share/event-horizon/skel
 
-mkdir -p "${config_home}/hypr/eh" "${config_home}/event-horizon"
+mkdir -p "${config_home}/hypr/eh" "${config_home}/Event-Horizon"
 
 if [[ ! -e "${config_home}/hypr/hyprland.conf" ]]; then
     cp "${skel}/hypr/hyprland.conf" "${config_home}/hypr/hyprland.conf"
@@ -24,17 +24,22 @@ if [[ ! -e "${config_home}/hypr/eh/colors.conf" ]]; then
     cp "${skel}/hypr/eh/colors.conf" "${config_home}/hypr/eh/colors.conf"
 fi
 
-# First login: point Event Horizon at Bazzite's wallpaper so the desktop is
-# not an empty grey surface. Only written when the user has no shell config
-# yet; after that the shell's own Wallpaper settings own the file.
-eh_config="${config_home}/event-horizon/config.toml"
-default_wallpaper=/usr/share/wallpapers/convergence.png
-if [[ ! -e "${eh_config}" && -f "${default_wallpaper}" ]]; then
-    # Cairo (software) renderer by default: the Vulkan renderer redraws only
-    # the changed part of a panel into a buffer that may not hold the previous
-    # frame, so Settings goes blank except the item under the pointer. Users
-    # can switch back under Settings -> Panels & UI -> Shell renderer.
-    printf '[shell]\nrenderer = "cairo"\n\n[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${default_wallpaper}" > "${eh_config}"
+# First login: point Event Horizon at a wallpaper so the desktop is not an
+# empty grey surface. Only written when the user has no shell settings yet;
+# after that the shell's own Wallpaper settings own the file. Home folders
+# from the old C++ Event Horizon (~/.config/event-horizon/config.toml) keep
+# the wallpaper they had picked.
+eh_settings="${config_home}/Event-Horizon/settings.toml"
+old_eh_config="${config_home}/event-horizon/config.toml"
+wallpaper=/usr/share/wallpapers/convergence.png
+if [[ -f "${old_eh_config}" ]]; then
+    old_image=$(awk -F'"' '/^\[/{s=$0} s=="[wallpaper]" && /^image[ \t]*=/{print $2; exit}' "${old_eh_config}")
+    if [[ -n "${old_image}" && -f "${old_image}" ]]; then
+        wallpaper="${old_image}"
+    fi
+fi
+if [[ ! -e "${eh_settings}" && -f "${wallpaper}" ]]; then
+    printf '[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${wallpaper}" > "${eh_settings}"
 fi
 
 # Bazzite's installer copies a silent Steam autostart entry into every new

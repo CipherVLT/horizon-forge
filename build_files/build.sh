@@ -7,7 +7,7 @@ set -eoux pipefail
 trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 cp -avf /ctx/system_files/. /
-chmod 0755 /usr/bin/event-horizon-session
+chmod 0755 /usr/bin/event-horizon-session /usr/bin/EventHorizon
 chmod 0755 /usr/libexec/bazzite-horizon-sdboot-sync
 chmod 0755 /usr/bin/strata /usr/libexec/bazzite-horizon-strata-theme
 systemctl --global enable bazzite-horizon-strata-theme.path
@@ -127,12 +127,15 @@ if [[ -f /usr/lib/os-release ]]; then
     fi
 fi
 
-if ldd /usr/bin/EventHorizon | grep -F 'not found'; then
-    echo "EventHorizon is missing shared libraries" >&2
-    exit 1
-fi
-
-/usr/bin/EventHorizon --version
+for bin in /usr/bin/horizon /usr/bin/horizon-* /usr/bin/eh-ipc /usr/bin/horizonClipboardDaemon; do
+    if ldd "${bin}" 2>/dev/null | grep -F 'not found'; then
+        echo "${bin} is missing shared libraries" >&2
+        exit 1
+    fi
+done
+/usr/bin/horizon --version
+# Older home folders start the shell as `EventHorizon` (hyprland.conf exec-once).
+test -x /usr/bin/EventHorizon
 test -x /usr/bin/event-horizon-session
 test -x /usr/bin/strata
 test -x /usr/libexec/strata/strata

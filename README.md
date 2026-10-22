@@ -1,6 +1,6 @@
 # Bazzite Horizon
 
-**[Bazzite](https://bazzite.gg) with a Hyprland desktop and the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) shell.**
+**[Bazzite](https://bazzite.gg) with a Hyprland desktop and the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon) shell.**
 
 Everything that makes Bazzite good for gaming stays the same: Steam, Gamescope, the BORE-scheduled kernel, drivers, and automatic updates. On top of that it is set up for **creators and coders**: a single desktop, **Event Horizon** on Hyprland, without the KDE apps it replaces, and package repositories left open so you can install software system-wide.
 
@@ -166,7 +166,7 @@ The [image-template README](https://github.com/ublue-os/image-template#readme) c
 ## Credits
 
 - [Bazzite](https://github.com/ublue-os/bazzite) and [Universal Blue](https://universal-blue.org): the base system and the [image template](https://github.com/ublue-os/image-template) this repo started from
-- [Event Horizon Shell](https://github.com/Event-Horizon-desktop-environment/Event-Horizon-Shell) by Ryzendrew: the desktop shell
+- [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon) by Ryzendrew: the desktop shell (Zig rewrite)
 - [Hyprland](https://hypr.land): the compositor
 - [Strata](https://github.com/lgse/strata) by lgse: the file manager
 - [dcli-bootc](https://gitlab.com/theblackdon/dcli-bootc) by theblackdon: the profile/modules layout (`profile.yaml`, `modules/`)

@@ -9,7 +9,7 @@ horizon-info:
     if [[ -f /usr/share/bazzite-horizon/event-horizon.ref ]]; then
         echo "Event Horizon: $(tr -d '[:space:]' < /usr/share/bazzite-horizon/event-horizon.ref)"
     fi
-    EventHorizon --version
+    horizon --version
 
 # Install QEMU/KVM virtual machines (virt-manager) system-wide. Reboot after.
 horizon-vm:
