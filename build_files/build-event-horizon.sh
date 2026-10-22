@@ -71,6 +71,16 @@ git -C "${src}" checkout --detach FETCH_HEAD
 git -C "${src}" submodule update --init --recursive --depth 1
 
 cd "${src}"
+# Safe builds turn on glibc's _FORTIFY_SOURCE wrappers, and Zig's C
+# translation cannot handle some of them (gethostname: "expected c_int,
+# found bool"). Undefine it inside every @cImport for non-fast builds; Zig's
+# own safety checks, the reason for the safe build, are unaffected.
+if [[ "${EH_OPTIMIZE}" != ReleaseFast ]]; then
+    grep -rl --include='*.zig' '@cImport({' src | while read -r f; do
+        sed -i 's/@cImport({/@cImport({ @cUndef("_FORTIFY_SOURCE");/' "${f}"
+    done
+fi
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
