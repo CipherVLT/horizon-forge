@@ -127,6 +127,51 @@ for path, n in want.items():
 print("horizon-forge: pear + control-center popups use on-demand keyboard focus")
 PY
 
+# Local patch: a component whose Wayland connection died (the compositor
+# disconnected it, e.g. for a protocol error) kept running with no surfaces:
+# the dock vanished for good because the supervisor still saw it alive, and
+# the reason was lost with stderr. On a fatal display error, log the errno and
+# the offending interface#id to ~/EH-logs, then exit so the supervisor
+# respawns it. Upstream's polkit agent already does this for itself.
+python3 - <<'PY'
+import pathlib, sys
+p = pathlib.Path("src/wl/connection.zig")
+s = p.read_text()
+old = """    pub fn flush(self: *Connection) bool {
+        if (self.display) |d| return wl.wl_display_flush(d) >= 0;
+        return false;
+    }
+"""
+new = """    pub fn flush(self: *Connection) bool {
+        if (self.display) |d| {
+            if (wl.wl_display_flush(d) >= 0) return true;
+            // horizon-forge: fatal display error -> log why, exit for respawn.
+            const code = wl.wl_display_get_error(d);
+            if (code != 0) {
+                var iface: [*c]const wl.struct_wl_interface = null;
+                var id: u32 = 0;
+                const perr = wl.wl_display_get_protocol_error(d, &iface, &id);
+                const name: []const u8 = if (iface != null and iface.*.name != null)
+                    std.mem.span(@as([*:0]const u8, @ptrCast(iface.*.name)))
+                else
+                    "?";
+                @import("../logz.zig").err(
+                    "display connection lost: errno={d} protocol_error={d} on {s}#{d}; exiting for supervisor respawn",
+                    .{ code, perr, name, id },
+                );
+                std.process.exit(1);
+            }
+            return false;
+        }
+        return false;
+    }
+"""
+if s.count(old) != 1:
+    sys.exit(f"horizon-forge disconnect patch: Connection.flush changed upstream in {p}")
+p.write_text(s.replace(old, new))
+print("horizon-forge: components log and exit on a lost Wayland connection")
+PY
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
