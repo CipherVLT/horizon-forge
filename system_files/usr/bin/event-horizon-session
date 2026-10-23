@@ -42,19 +42,25 @@ if [[ ! -e "${eh_settings}" && -f "${wallpaper}" ]]; then
     printf '[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${wallpaper}" > "${eh_settings}"
 fi
 
-# Screenshot keys: Event Horizon handles Super+Shift+S, Print and Alt+Print
-# itself (opening Satty), so the screenshot lines older hyprland.conf files
-# carry for those keys would launch a second capture. Remove exactly those
-# default lines (custom bindings stay), then add Super+Print if nothing binds it.
+# Screenshot keys: bind the four screenshot keys to horizon-screenshot
+# (Satty) where hyprland.conf has nothing on them yet. Event Horizon's own
+# hotkeys need /dev/input access most users don't have, so Hyprland has to
+# own them. Drops the old default line pointing at Event Horizon's capture
+# (no editor yet) and a stale comment from an earlier build; bindings you
+# made yourself are left alone.
 hypr_conf="${config_home}/hypr/hyprland.conf"
 if [[ -f "${hypr_conf}" ]]; then
     sed -i -E \
         -e '/^bind = SUPER SHIFT, S, exec, (EventHorizon|horizon) --eh-screenshot --select --preview$/d' \
-        -e '/^bind = SUPER SHIFT, S, exec, horizon-screenshot$/d' \
-        -e '/^bind = , Print, exec, horizon-screenshot full$/d' \
+        -e '/^# Screenshot \(drag a box\) in Satty\. Event Horizon handles Super\+Shift\+S and Print itself\.$/d' \
         "${hypr_conf}"
-    if ! grep -qE '^bind = SUPER, Print,' "${hypr_conf}"; then
-        printf '\n# Screenshot (drag a box) in Satty. Event Horizon handles Super+Shift+S and Print itself.\nbind = SUPER, Print, exec, horizon-screenshot\n' >> "${hypr_conf}"
+    add=""
+    grep -qE '^bind = SUPER SHIFT, S,' "${hypr_conf}" || add+="bind = SUPER SHIFT, S, exec, horizon-screenshot\n"
+    grep -qE '^bind = SUPER, Print,' "${hypr_conf}" || add+="bind = SUPER, Print, exec, horizon-screenshot\n"
+    grep -qE '^bind = , Print,' "${hypr_conf}" || add+="bind = , Print, exec, horizon-screenshot screen\n"
+    grep -qE '^bind = ALT, Print,' "${hypr_conf}" || add+="bind = ALT, Print, exec, horizon-screenshot full\n"
+    if [[ -n "${add}" ]]; then
+        printf '\n# Screenshots in Satty: annotate, copy, save to ~/Pictures/Screenshots, save as.\n%b' "${add}" >> "${hypr_conf}"
     fi
 fi
 

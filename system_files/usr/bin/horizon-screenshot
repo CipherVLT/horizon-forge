@@ -7,6 +7,11 @@
 # Save as asks where. Copy puts it on the clipboard. Esc cancels.
 set -euo pipefail
 
+# One editor at a time: Hyprland and Event Horizon can both react to the same
+# key, and a second press while picking should not stack another capture.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/horizon-screenshot.lock"
+flock -n 9 || exit 0
+
 pictures=$(xdg-user-dir PICTURES 2>/dev/null || true)
 [[ -n "${pictures}" && "${pictures}" != "${HOME}" ]] || pictures="${HOME}/Pictures"
 dir="${pictures}/Screenshots"
