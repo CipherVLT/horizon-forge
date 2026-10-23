@@ -218,6 +218,77 @@ p.write_text(s)
 print("horizon-forge: screenshot hotkeys open horizon-screenshot (Satty)")
 PY
 
+# Local patch: Wi-Fi networks never listed unless Wi-Fi was already
+# connected. live_network.query() skips every NetworkManager device that is
+# not activated, the access-point list included, so on Ethernet (or with
+# nothing connected) the dock's network card had no network to join. List
+# the access points of an idle Wi-Fi adapter too. And the settings app's
+# "Scan for networks" button has no action yet: open nmtui's network picker
+# in kitty until Event Horizon builds that page.
+python3 - <<'PY'
+import pathlib, sys
+p = pathlib.Path("src/desktop_shell/controlcenter/live_network.zig")
+s = p.read_text()
+skip = "        if (dstate != NM_DEVICE_STATE_ACTIVATED) continue;\n"
+fn_anchor = "pub fn query(alloc: std.mem.Allocator) ?Queried {\n"
+if s.count(skip) != 1 or s.count(fn_anchor) != 1:
+    sys.exit(f"horizon-forge wifi patch: query() changed upstream in {p}")
+s = s.replace(skip, """        if (dstate != NM_DEVICE_STATE_ACTIVATED) {
+            // horizon-forge: an idle Wi-Fi adapter still lists nearby networks.
+            if (dtype == NM_DEVICE_TYPE_WIFI) appendIdleWifiAps(&conn, alloc, &q, d.object_path);
+            continue;
+        }
+""")
+helper = """/// horizon-forge: nearby networks for a Wi-Fi adapter that isn't connected,
+/// so the card has something to join when Wi-Fi is idle.
+fn appendIdleWifiAps(conn: *conn_mod.Conn, alloc: std.mem.Allocator, q: *Queried, dev_path: []const u8) void {
+    const aps = getPaths(conn, alloc, dev_path, wifi_iface, "GetAccessPoints") orelse return;
+    defer {
+        for (aps) |a| if (a == .object_path) alloc.free(a.object_path);
+        alloc.free(aps);
+    }
+    for (aps) |a| {
+        if (a != .object_path) continue;
+        if (q.ap_list.items.len >= 8) break;
+        var ssid_buf: [128]u8 = undefined;
+        const ssid = apSsid(conn, alloc, a.object_path, &ssid_buf);
+        if (ssid.len == 0) continue;
+        const strength = getU32(conn, alloc, a.object_path, ap_iface, "Strength");
+        const flags = getU32(conn, alloc, a.object_path, ap_iface, "Flags");
+        const wpa = getU32(conn, alloc, a.object_path, ap_iface, "WpaFlags");
+        const rsn = getU32(conn, alloc, a.object_path, ap_iface, "RsnFlags");
+        q.ap_list.append(alloc, .{
+            .ssid = alloc.dupe(u8, ssid) catch "",
+            .strength = @intCast(@min(strength, 100)),
+            .secured = (flags & 0x1) != 0 or wpa != 0 or rsn != 0,
+            .active = false,
+        }) catch {};
+    }
+}
+
+"""
+s = s.replace(fn_anchor, helper + fn_anchor)
+p.write_text(s)
+
+p = pathlib.Path("src/ux/settings2/window.zig")
+s = p.read_text()
+btn = """            .button => |label| {
+                if (std.mem.eql(u8, label, "Test notification")) {"""
+if s.count(btn) != 1:
+    sys.exit(f"horizon-forge wifi patch: settings button handler changed upstream in {p}")
+s = s.replace(btn, """            .button => |label| {
+                // horizon-forge: no Wi-Fi page yet; open NetworkManager's picker.
+                if (std.mem.eql(u8, label, "Scan for networks")) {
+                    @import("../../services/autostart.zig").spawnDetached(self.io, &.{ "kitty", "--title", "Wi-Fi networks", "nmtui", "connect" }) catch |e| {
+                        logz.log("settings: could not open nmtui: {s}", .{@errorName(e)});
+                    };
+                    return;
+                }
+                if (std.mem.eql(u8, label, "Test notification")) {""")
+p.write_text(s)
+print("horizon-forge: idle Wi-Fi lists networks; settings Scan opens nmtui")
+PY
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
