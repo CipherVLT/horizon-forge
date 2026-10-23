@@ -80,7 +80,7 @@ sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
 | Desktop | KDE Plasma | Event Horizon on Hyprland (Plasma session hidden) |
 | Login screen | Plasma Login | SDDM with the [Pixie](https://github.com/xCaptaiN09/pixie-sddm) theme, Bazzite wallpaper, 12-hour clock |
 | File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
-| Screenshots | Spectacle | Event Horizon's tool (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>) |
+| Screenshots | Spectacle | [Satty](https://github.com/gabm/Satty) (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>): drag a box, then crop, draw, add text or blur, and Copy, Save or Save as. Saves to `~/Pictures/Screenshots` |
 | Default apps | Kate, KDE Menu Editor, Steam starting at login, Steam Big Picture Mode menu entries, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole, KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 (Chinese/Japanese/Korean input methods), Btrfs Assistant, Cardwire app, the Discourse forum link, Xwayland Video Bridge | KDE apps removed, keeping the components Bazzite needs to run. kitty is the terminal |
 | Added (system packages) | | Firefox, OBS Studio, gedit, ProtonPlus, Heroic Games Launcher, Strata, GameMode, Wine (latest development release from [Kron4ek](https://github.com/Kron4ek/Wine-Builds), NTSync on) |
 | CPU while gaming | `powersave` governor, balanced profile all the time (GameMode removed) | GameMode switches to the `performance` governor and power profile while a game runs, then restores your profile. Use `gamemoderun %command%` in Steam's Launch Options |
@@ -139,7 +139,9 @@ Tip: in the file manager, press **Ctrl + H** to show hidden files such as `~/.co
 | --- | --- |
 | <kbd>Super</kbd> + <kbd>Enter</kbd> | Terminal (kitty) |
 | <kbd>Super</kbd> + <kbd>Space</kbd> | App launcher (fuzzel) |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Screenshot (select an area) |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> or <kbd>Super</kbd> + <kbd>Print</kbd> | Screenshot: drag a box, then edit and save it |
+| <kbd>Print</kbd> | Screenshot of the screen under the pointer, then edit and save it |
+| <kbd>Alt</kbd> + <kbd>Print</kbd> | Screenshot of every screen, then edit and save it |
 | <kbd>Super</kbd> + <kbd>Q</kbd> | Close window |
 | <kbd>Super</kbd> + <kbd>F</kbd> | Fullscreen |
 | <kbd>Super</kbd> + <kbd>V</kbd> | Toggle floating |
