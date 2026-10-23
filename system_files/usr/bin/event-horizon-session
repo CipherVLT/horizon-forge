@@ -42,15 +42,19 @@ if [[ ! -e "${eh_settings}" && -f "${wallpaper}" ]]; then
     printf '[wallpaper]\nenabled = true\nmode = 0\nimage = "%s"\n' "${wallpaper}" > "${eh_settings}"
 fi
 
-# Screenshot key: hyprland.conf files seeded before Satty still bind
-# Super+Shift+S to Event Horizon's own capture, which has no editor or save
-# dialog yet. Swap only that exact default line; a binding you changed
-# yourself is left alone.
+# Screenshot keys: Event Horizon handles Super+Shift+S, Print and Alt+Print
+# itself (opening Satty), so the screenshot lines older hyprland.conf files
+# carry for those keys would launch a second capture. Remove exactly those
+# default lines (custom bindings stay), then add Super+Print if nothing binds it.
 hypr_conf="${config_home}/hypr/hyprland.conf"
-if [[ -f "${hypr_conf}" ]] && grep -qE '^bind = SUPER SHIFT, S, exec, (EventHorizon|horizon) --eh-screenshot --select --preview$' "${hypr_conf}"; then
-    sed -i -E 's/^bind = SUPER SHIFT, S, exec, (EventHorizon|horizon) --eh-screenshot --select --preview$/bind = SUPER SHIFT, S, exec, horizon-screenshot/' "${hypr_conf}"
-    if ! grep -qE '^bind = , Print, ' "${hypr_conf}"; then
-        sed -i -E '/^bind = SUPER SHIFT, S, exec, horizon-screenshot$/a bind = , Print, exec, horizon-screenshot full' "${hypr_conf}"
+if [[ -f "${hypr_conf}" ]]; then
+    sed -i -E \
+        -e '/^bind = SUPER SHIFT, S, exec, (EventHorizon|horizon) --eh-screenshot --select --preview$/d' \
+        -e '/^bind = SUPER SHIFT, S, exec, horizon-screenshot$/d' \
+        -e '/^bind = , Print, exec, horizon-screenshot full$/d' \
+        "${hypr_conf}"
+    if ! grep -qE '^bind = SUPER, Print,' "${hypr_conf}"; then
+        printf '\n# Screenshot (drag a box) in Satty. Event Horizon handles Super+Shift+S and Print itself.\nbind = SUPER, Print, exec, horizon-screenshot\n' >> "${hypr_conf}"
     fi
 fi
 

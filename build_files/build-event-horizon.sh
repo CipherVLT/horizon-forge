@@ -172,6 +172,52 @@ p.write_text(s.replace(old, new))
 print("horizon-forge: components log and exit on a lost Wayland connection")
 PY
 
+# Local patch: Event Horizon reads the keyboard itself (evdev, under
+# Hyprland) and runs its own capture for Super+Shift+S (region), Print (the
+# monitor under the pointer) and Alt+Print (every monitor). That capture has
+# no editor or save dialog yet ("--preview ... no GUI for it yet"), and it
+# races any Hyprland binding for the same keys. Point the three hotkeys at
+# /usr/bin/horizon-screenshot (slurp + grim + Satty: annotate, copy, save,
+# save as). `eh-ipc screenshot` and `horizon --eh-screenshot` are unchanged.
+python3 - <<'PY'
+import pathlib, sys
+p = pathlib.Path("src/bootstrap/runner.zig")
+s = p.read_text()
+calls = {
+    'spawnScreenshot(sh.gpa, &.{ "--select", "--preview" })': 'spawnHorizonScreenshot("region")',
+    'spawnScreenshot(sh.gpa, &.{"--preview"})': 'spawnHorizonScreenshot("screen")',
+    'spawnScreenshot(sh.gpa, &.{ "--all-monitors", "--preview" })': 'spawnHorizonScreenshot("full")',
+}
+for old, new in calls.items():
+    if s.count(old) != 1:
+        sys.exit(f"horizon-forge screenshot patch: expected one '{old}' in {p}")
+    s = s.replace(old, new)
+anchor = "fn spawnScreenshot(alloc: std.mem.Allocator, args: []const []const u8) i64 {\n"
+if s.count(anchor) != 1:
+    sys.exit(f"horizon-forge screenshot patch: spawnScreenshot signature changed in {p}")
+helper = """/// horizon-forge: the screenshot hotkeys open /usr/bin/horizon-screenshot
+/// (slurp + grim + Satty: annotate, copy, save, save as). Detached in its
+/// own session like spawnScreenshot. Returns the child pid, or a negative errno.
+fn spawnHorizonScreenshot(mode: [*:0]const u8) i64 {
+    const bin: [*:0]const u8 = "/usr/bin/horizon-screenshot";
+    const argv = [_][*c]u8{ @constCast(bin), @constCast(mode), null };
+    if (builtin.is_test) return 0;
+    var pid: std.posix.pid_t = 0;
+    var attr: spawn_c.posix_spawnattr_t = undefined;
+    if (spawn_c.posix_spawnattr_init(&attr) != 0) return -@as(i64, @intFromEnum(linux.E.NOMEM));
+    defer _ = spawn_c.posix_spawnattr_destroy(&attr);
+    if (spawn_c.posix_spawnattr_setflags(&attr, spawn_c.POSIX_SPAWN_SETSID) != 0) return -@as(i64, @intFromEnum(linux.E.INVAL));
+    const rc = spawn_c.posix_spawnp(&pid, bin, null, &attr, &argv, std.c.environ);
+    if (rc != 0) return -@as(i64, rc);
+    return pid;
+}
+
+"""
+s = s.replace(anchor, helper + anchor)
+p.write_text(s)
+print("horizon-forge: screenshot hotkeys open horizon-screenshot (Satty)")
+PY
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
