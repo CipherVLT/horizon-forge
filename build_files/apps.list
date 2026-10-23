@@ -12,6 +12,8 @@ gedit
 
 # Web
 firefox
+# Wi-Fi picker in a terminal (nmtui); the settings app's Scan button opens it
+NetworkManager-tui
 
 # Create
 obs-studio
