@@ -48,15 +48,15 @@ Bazzite Horizon is installed from its ISO.
 **1. Download the ISO**
 
 1. Open **[Actions → Build disk images](https://github.com/CipherVLT/horizon-forge/actions/workflows/build-disk.yml)** and click the most recent run with a green check.
-2. Under **Artifacts**, download `anaconda-iso-bazzite-horizon` or `anaconda-iso-bazzite-horizon-nvidia` (about 6 GB). You need to be signed in to GitHub, and artifacts expire after 90 days.
-3. Unzip it. The installer is `install.iso`.
+2. Under **Artifacts**, download the one for your graphics (about 7 GB): `anaconda-iso-bazzite-horizon-<date>` for AMD/Intel or `anaconda-iso-bazzite-horizon-nvidia-<date>` for NVIDIA. You need to be signed in to GitHub, and artifacts expire after 90 days.
+3. Unzip it. The installer is named after the image and its build date, for example `bazzite-horizon-nvidia-20261024.iso`.
 
 **2. Write it to a USB stick (8 GB or larger)**
 
 Use [Fedora Media Writer](https://fedoraproject.org/workstation/download) or [balenaEtcher](https://etcher.balena.io). On Linux you can also use `dd`; check the device name with `lsblk` first, because this erases it:
 
 ```bash
-sudo dd if=install.iso of=/dev/sdX bs=4M conv=fsync status=progress
+sudo dd if=bazzite-horizon-nvidia-20261024.iso of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
 **3. Prepare the computer**
