@@ -118,6 +118,22 @@ gpu_conf="${config_home}/hypr/eh/gpu.conf"
     fi
 } > "${gpu_conf}"
 
+# Event Horizon saves an icon index in ~/.cache and reuses it while the icon
+# folders' modification times are unchanged. Everything under /usr has the
+# same fixed timestamp on this system (ostree), so apps added later with
+# rpm-ostree or `ujust horizon-install` (ROG Control Center, Discord, ...)
+# showed up greyed out without an icon. Drop the index whenever the set of
+# installed icon files changes; Event Horizon rebuilds it on start.
+icon_index="${XDG_CACHE_HOME:-${HOME}/.cache}/Event-Horizon/icon-index"
+icon_state="${HOME}/.local/state/bazzite-horizon/icon-files"
+icon_fp=$(ls -R /usr/share/icons /usr/share/pixmaps /usr/local/share/icons \
+    /var/lib/flatpak/exports/share/icons "${HOME}/.local/share/icons" 2>/dev/null | md5sum) || true
+if [[ "$(cat "${icon_state}" 2>/dev/null)" != "${icon_fp}" ]]; then
+    rm -rf "${icon_index}"
+    mkdir -p "$(dirname "${icon_state}")"
+    printf '%s\n' "${icon_fp}" > "${icon_state}"
+fi
+
 # Strata draws its own colors; match them to the GTK theme (also re-run by
 # bazzite-horizon-strata-theme.path when the theme changes).
 /usr/libexec/bazzite-horizon-strata-theme >/dev/null 2>&1 &
