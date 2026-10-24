@@ -37,7 +37,7 @@ Bazzite's foundation stays: Steam, Gamescope, the BORE-scheduled kernel, drivers
 
 The NVIDIA image uses NVIDIA's **open kernel driver**, which is what current cards (RTX 30, 40 and 50 series) are designed for. It does **not** support GTX 10 series or older.
 
-On laptops with two GPUs (for example Intel + RTX), the desktop runs on the integrated GPU and leaves the NVIDIA card free for games. This is detected automatically at every login.
+On laptops with two GPUs (for example Intel + RTX), the desktop runs on the integrated GPU and leaves the NVIDIA card free for games. This is detected automatically at every login. Run `ujust horizon-gpu` to choose when the NVIDIA card may wake up: **smart** (asleep for browsing and video, on for the games you allow), **integrated** (always off, longest battery) or **hybrid** (always available). On ASUS laptops, `ujust horizon-asus` adds asusctl and ROG Control Center for fans, keyboard lighting and the battery charge limit.
 
 ---
 

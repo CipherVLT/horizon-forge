@@ -97,19 +97,24 @@ gpu_conf="${config_home}/hypr/eh/gpu.conf"
             *)      other="${other:+${other}:}${node}" ;;
         esac
     done
-    if [[ -n "${nvidia}" ]]; then
-        # https://wiki.hypr.land/Nvidia/
+    if [[ -n "${nvidia}" && -z "${other}" ]]; then
+        # NVIDIA only: everything runs on it. https://wiki.hypr.land/Nvidia/
         echo "env = LIBVA_DRIVER_NAME,nvidia"
         echo "env = __GLX_VENDOR_LIBRARY_NAME,nvidia"
         echo "env = NVD_BACKEND,direct"
         echo "cursor {"
         echo "    no_hardware_cursors = true"
         echo "}"
-        if [[ -n "${other}" ]]; then
-            # Hybrid laptop: render the desktop on the integrated GPU and
-            # keep the NVIDIA card for games (prime-run / Steam launch options).
-            echo "env = AQ_DRM_DEVICES,${other}:${nvidia}"
-        fi
+    elif [[ -n "${nvidia}" ]]; then
+        # Hybrid laptop: the desktop, browser and video decoding stay on the
+        # integrated GPU so the NVIDIA card can sleep. Games reach it through
+        # Cardwire (ujust horizon-gpu). Forcing the NVIDIA GL/VA-API drivers
+        # here would keep it awake all the time. Its outputs (often HDMI)
+        # still work: Hyprland drives them as a secondary GPU.
+        echo "env = AQ_DRM_DEVICES,${other}:${nvidia}"
+        echo "cursor {"
+        echo "    no_hardware_cursors = true"
+        echo "}"
     fi
 } > "${gpu_conf}"
 

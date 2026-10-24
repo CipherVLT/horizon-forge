@@ -272,3 +272,93 @@ horizon-remove +packages:
         echo "${pkgs[*]} will be gone after your next reboot."
         echo "(Removing needs a reboot; installing with horizon-install does not.)"
     fi
+
+# Laptop graphics (NVIDIA image): smart | integrated | hybrid | app | app-remove. No option shows the status
+horizon-gpu MODE="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v cardwire >/dev/null; then
+        echo "Cardwire isn't in this image. GPU switching is part of the NVIDIA image (bazzite-horizon-nvidia)."
+        exit 1
+    fi
+    cw() { cardwire "$@" 2>/dev/null || sudo cardwire "$@"; }
+    case "{{ MODE }}" in
+        "")
+            echo "Mode: $(cardwire get 2>/dev/null || echo unknown)"
+            echo
+            cardwire list 2>/dev/null || true
+            echo
+            echo "  ujust horizon-gpu smart        NVIDIA asleep; games you allow can use it (recommended)"
+            echo "  ujust horizon-gpu integrated   NVIDIA always off: longest battery"
+            echo "  ujust horizon-gpu hybrid       Both GPUs open to every app (plugged in)"
+            echo "  ujust horizon-gpu app          Install the Cardwire app (pick games for smart mode)"
+            echo
+            echo "Steam launch options for a game on the NVIDIA card in smart mode:"
+            echo "  CARDWIRE_FORCE_DGPU=1 gamemoderun %command%"
+            ;;
+        smart|integrated|hybrid)
+            cw set "{{ MODE }}"
+            echo "Mode: $(cardwire get 2>/dev/null || echo "{{ MODE }}")"
+            echo "Apps that are already open keep their GPU until you restart them."
+            ;;
+        app)
+            rpm-ostree install --idempotent --allow-inactive cardwire-gui
+            echo "Done. Reboot, then open Cardwire from the app menu."
+            ;;
+        app-remove)
+            rpm-ostree uninstall cardwire-gui
+            echo "Done. Reboot to finish."
+            ;;
+        *)
+            echo "Unknown option '{{ MODE }}'. Use: smart, integrated, hybrid, app or app-remove." >&2
+            exit 1
+            ;;
+    esac
+
+# ASUS laptops: install asusctl + ROG Control Center (Terra). Run again after the reboot to finish. Option: remove
+horizon-asus ACTION="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    conf=/etc/asusd/asusd.ron
+    vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+    if [[ "{{ ACTION }}" == "remove" ]]; then
+        rpm-ostree uninstall asusctl asusctl-rog-gui
+        echo "Done. Reboot to finish."
+        exit 0
+    elif [[ -n "{{ ACTION }}" ]]; then
+        echo "Unknown option '{{ ACTION }}'. Use no option to install, or: remove" >&2
+        exit 1
+    fi
+    if [[ "${vendor}" != ASUS* ]]; then
+        echo "This computer reports '${vendor:-unknown}' as its maker; asusctl is for ASUS laptops."
+        read -r -p "Install anyway? (y/N) " reply
+        [[ "${reply}" == [yY] ]] || exit 0
+    fi
+    if ! command -v asusctl >/dev/null; then
+        # Terra: the official Fedora packages (Fyra Labs, part of the Open
+        # Gaming Collective with asusctl), updated with every release.
+        rpm-ostree install --idempotent --allow-inactive asusctl asusctl-rog-gui
+        echo
+        echo "Installed. Reboot, then run 'ujust horizon-asus' once more to finish setup."
+        exit 0
+    fi
+    # Second run: leave power profiles to tuned (and GameMode's switch to
+    # performance while gaming). asusd keeps fans, keyboard lighting, the
+    # battery charge limit and the MUX. asusctl's guide: don't let both manage
+    # profiles. GPU switching stays with Cardwire (ujust horizon-gpu).
+    if [[ ! -f "${conf}" ]]; then
+        sudo systemctl start asusd.service || true
+        for _ in 1 2 3 4 5; do [[ -f "${conf}" ]] && break; sleep 1; done
+    fi
+    if [[ -f "${conf}" ]]; then
+        sudo sed -i -E 's/^([[:space:]]*(change_platform_profile_on_ac|change_platform_profile_on_battery|platform_profile_linked_epp):)[[:space:]]*true/\1 false/' "${conf}"
+        sudo systemctl restart asusd.service
+        echo "asusd is set up: power profiles stay with the system (tuned/GameMode)."
+    else
+        echo "asusd hasn't created ${conf} yet (is this an ASUS laptop?). Run this again later." >&2
+    fi
+    asusctl --version 2>/dev/null | head -n 1 || true
+    echo
+    echo "Open ROG Control Center from the app menu for fans, keyboard lighting and the"
+    echo "battery charge limit. Use 'ujust horizon-gpu' for graphics switching, not ROG"
+    echo "Control Center's GPU mode, so the two don't fight."
