@@ -314,3 +314,51 @@ horizon-gpu MODE="":
             exit 1
             ;;
     esac
+
+# ASUS laptops: install asusctl + ROG Control Center (Terra). Run again after the reboot to finish. Option: remove
+horizon-asus ACTION="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    conf=/etc/asusd/asusd.ron
+    vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+    if [[ "{{ ACTION }}" == "remove" ]]; then
+        rpm-ostree uninstall asusctl asusctl-rog-gui
+        echo "Done. Reboot to finish."
+        exit 0
+    elif [[ -n "{{ ACTION }}" ]]; then
+        echo "Unknown option '{{ ACTION }}'. Use no option to install, or: remove" >&2
+        exit 1
+    fi
+    if [[ "${vendor}" != ASUS* ]]; then
+        echo "This computer reports '${vendor:-unknown}' as its maker; asusctl is for ASUS laptops."
+        read -r -p "Install anyway? (y/N) " reply
+        [[ "${reply}" == [yY] ]] || exit 0
+    fi
+    if ! command -v asusctl >/dev/null; then
+        # Terra: the official Fedora packages (Fyra Labs, part of the Open
+        # Gaming Collective with asusctl), updated with every release.
+        rpm-ostree install --idempotent --allow-inactive asusctl asusctl-rog-gui
+        echo
+        echo "Installed. Reboot, then run 'ujust horizon-asus' once more to finish setup."
+        exit 0
+    fi
+    # Second run: leave power profiles to tuned (and GameMode's switch to
+    # performance while gaming). asusd keeps fans, keyboard lighting, the
+    # battery charge limit and the MUX. asusctl's guide: don't let both manage
+    # profiles. GPU switching stays with Cardwire (ujust horizon-gpu).
+    if [[ ! -f "${conf}" ]]; then
+        sudo systemctl start asusd.service || true
+        for _ in 1 2 3 4 5; do [[ -f "${conf}" ]] && break; sleep 1; done
+    fi
+    if [[ -f "${conf}" ]]; then
+        sudo sed -i -E 's/^([[:space:]]*(change_platform_profile_on_ac|change_platform_profile_on_battery|platform_profile_linked_epp):)[[:space:]]*true/\1 false/' "${conf}"
+        sudo systemctl restart asusd.service
+        echo "asusd is set up: power profiles stay with the system (tuned/GameMode)."
+    else
+        echo "asusd hasn't created ${conf} yet (is this an ASUS laptop?). Run this again later." >&2
+    fi
+    asusctl --version 2>/dev/null | head -n 1 || true
+    echo
+    echo "Open ROG Control Center from the app menu for fans, keyboard lighting and the"
+    echo "battery charge limit. Use 'ujust horizon-gpu' for graphics switching, not ROG"
+    echo "Control Center's GPU mode, so the two don't fight."
