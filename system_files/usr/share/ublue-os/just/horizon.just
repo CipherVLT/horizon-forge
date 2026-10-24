@@ -272,3 +272,45 @@ horizon-remove +packages:
         echo "${pkgs[*]} will be gone after your next reboot."
         echo "(Removing needs a reboot; installing with horizon-install does not.)"
     fi
+
+# Laptop graphics (NVIDIA image): smart | integrated | hybrid | app | app-remove. No option shows the status
+horizon-gpu MODE="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v cardwire >/dev/null; then
+        echo "Cardwire isn't in this image. GPU switching is part of the NVIDIA image (bazzite-horizon-nvidia)."
+        exit 1
+    fi
+    cw() { cardwire "$@" 2>/dev/null || sudo cardwire "$@"; }
+    case "{{ MODE }}" in
+        "")
+            echo "Mode: $(cardwire get 2>/dev/null || echo unknown)"
+            echo
+            cardwire list 2>/dev/null || true
+            echo
+            echo "  ujust horizon-gpu smart        NVIDIA asleep; games you allow can use it (recommended)"
+            echo "  ujust horizon-gpu integrated   NVIDIA always off: longest battery"
+            echo "  ujust horizon-gpu hybrid       Both GPUs open to every app (plugged in)"
+            echo "  ujust horizon-gpu app          Install the Cardwire app (pick games for smart mode)"
+            echo
+            echo "Steam launch options for a game on the NVIDIA card in smart mode:"
+            echo "  CARDWIRE_FORCE_DGPU=1 gamemoderun %command%"
+            ;;
+        smart|integrated|hybrid)
+            cw set "{{ MODE }}"
+            echo "Mode: $(cardwire get 2>/dev/null || echo "{{ MODE }}")"
+            echo "Apps that are already open keep their GPU until you restart them."
+            ;;
+        app)
+            rpm-ostree install --idempotent --allow-inactive cardwire-gui
+            echo "Done. Reboot, then open Cardwire from the app menu."
+            ;;
+        app-remove)
+            rpm-ostree uninstall cardwire-gui
+            echo "Done. Reboot to finish."
+            ;;
+        *)
+            echo "Unknown option '{{ MODE }}'. Use: smart, integrated, hybrid, app or app-remove." >&2
+            exit 1
+            ;;
+    esac
