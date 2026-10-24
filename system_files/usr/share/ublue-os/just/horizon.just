@@ -334,7 +334,8 @@ horizon-asus ACTION="":
         read -r -p "Install anyway? (y/N) " reply
         [[ "${reply}" == [yY] ]] || exit 0
     fi
-    if ! command -v asusctl >/dev/null; then
+    # Both packages, not just the asusctl command: the app is a separate one.
+    if ! rpm -q asusctl asusctl-rog-gui >/dev/null 2>&1; then
         # Terra: the official Fedora packages (Fyra Labs, part of the Open
         # Gaming Collective with asusctl), updated with every release.
         rpm-ostree install --idempotent --allow-inactive asusctl asusctl-rog-gui
@@ -357,7 +358,7 @@ horizon-asus ACTION="":
     else
         echo "asusd hasn't created ${conf} yet (is this an ASUS laptop?). Run this again later." >&2
     fi
-    asusctl --version 2>/dev/null | head -n 1 || true
+    rpm -q asusctl asusctl-rog-gui || true
     echo
     echo "Open ROG Control Center from the app menu for fans, keyboard lighting and the"
     echo "battery charge limit. Use 'ujust horizon-gpu' for graphics switching, not ROG"
