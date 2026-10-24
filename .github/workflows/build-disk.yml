@@ -120,11 +120,30 @@ jobs:
             "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}"
           echo "output-directory=output" >> "$GITHUB_OUTPUT"
 
+      # Every build used to produce an identically named install.iso, so an
+      # older AMD ISO and a newer NVIDIA one were easy to mix up after
+      # unzipping. Name the file after the image and the build date.
+      - name: Name the ISO
+        id: name
+        env:
+          SOURCE_DIR: ${{ steps.build.outputs.output-directory }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%d)
+          echo "artifact=${DISK_TYPE}-${IMAGE_NAME}-${stamp}" >> "$GITHUB_OUTPUT"
+          iso=$(find "${SOURCE_DIR}" -type f -name install.iso -print -quit)
+          if [[ -n "${iso}" ]]; then
+            name="${IMAGE_NAME}-${stamp}.iso"
+            mv "${iso}" "$(dirname "${iso}")/${name}"
+            (cd "$(dirname "${iso}")" && sha256sum "${name}" > "${name}.sha256")
+            echo "ISO: ${name}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload disk images and Checksum to Job Artifacts
         if: github.event_name != 'pull_request' && (inputs.upload-to-s3 != true || matrix.disk-type != 'anaconda-iso')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.disk-type }}-${{ inputs.variant || 'bazzite-horizon' }}
+          name: ${{ steps.name.outputs.artifact }}
           path: ${{ steps.build.outputs.output-directory }}
           if-no-files-found: error
           retention-days: 0
@@ -150,14 +169,14 @@ jobs:
           set -euo pipefail
           for v in R2_ACCOUNT_ID R2_BUCKET RCLONE_CONFIG_R2_ACCESS_KEY_ID RCLONE_CONFIG_R2_SECRET_ACCESS_KEY; do
             if [[ -z "${!v}" ]]; then
-              echo "::error::Missing ${v}. Add the R2 secrets described in the README (Publishing ISOs)."
+              echo "::error::Missing ${v}. Add the R2 repository secrets."
               exit 1
             fi
           done
 
-          iso=$(find "${SOURCE_DIR}" -type f -name install.iso -print -quit)
+          iso=$(find "${SOURCE_DIR}" -type f -name "${IMAGE_NAME}-*.iso" -print -quit)
           if [[ -z "${iso}" ]]; then
-            echo "::error::No install.iso under ${SOURCE_DIR}"
+            echo "::error::No ${IMAGE_NAME} ISO under ${SOURCE_DIR}"
             exit 1
           fi
 
