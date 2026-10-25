@@ -82,28 +82,6 @@ if [[ "${EH_OPTIMIZE}" != ReleaseFast ]]; then
     done
 fi
 
-# Local patch: double free in the dock's audio poll. With pactl installed
-# (Bazzite ships it), live_audio.query() moves the four `pactl list` outputs
-# into the returned Queried (q.sinks_text = sinks_text, ...) but also frees
-# them on return with `defer`. Queried.deinit frees them again on the next
-# poll, so horizon-dock aborts every few seconds ("double free or corruption")
-# and the parsed device names point at freed memory meanwhile. Drop the four
-# defers: Queried owns the buffers. Fails the build if upstream changes the
-# code, so the patch is re-checked instead of silently skipped.
-python3 - <<'PY'
-import pathlib, sys
-p = pathlib.Path("src/desktop_shell/controlcenter/live_audio.zig")
-s = p.read_text()
-for name in ("sinks_text", "sources_text", "in_text", "out_text"):
-    target = f"    defer if ({name}) |s| alloc.free(s);\n"
-    owner = f"    q.{name} = {name};\n"
-    if s.count(target) != 1 or s.count(owner) != 1:
-        sys.exit(f"horizon-forge audio patch: expected one '{target.strip()}' and one '{owner.strip()}' in {p}")
-    s = s.replace(target, f"    // horizon-forge: owned by Queried (freed in deinit), no defer free\n")
-p.write_text(s)
-print("horizon-forge: patched double free in live_audio.query")
-PY
-
 # Local patch: the network/Bluetooth card ("pear") and the control-center
 # panel open as overlay layers with EXCLUSIVE keyboard interactivity. While an
 # exclusive layer is mapped, Hyprland routes the pointer only to it, so
