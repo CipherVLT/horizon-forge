@@ -322,6 +322,41 @@ for rel in ("src/ux/settings2/wallpaper_thumbs.zig", "src/ux/settings/wallpaper_
     print(f"horizon-forge: wallpaper thumbnail worker woken on new requests ({rel})")
 PY
 
+# Local patch: the dock's Trash button did nothing. Its slot has no click or
+# menu action in the dock (only the taskbar's trash widget has one). Left
+# click opens the Trash (Strata), right click asks to empty it; both go
+# through /usr/libexec/bazzite-horizon-trash.
+python3 - <<'PY'
+import pathlib, sys
+p = pathlib.Path("src/bin/dock.zig")
+s = p.read_text()
+click = """                    .overview => {
+                        self.showOverview();
+                        return;
+                    },
+"""
+menu = """            .tray => blk: {
+                self.buildTrayMenu(s) catch |e| {"""
+if s.count(click) != 1 or s.count(menu) != 1:
+    sys.exit(f"horizon-forge trash patch: dock click/menu dispatch changed upstream in {p}")
+s = s.replace(click, """                    .trash => {
+                        // horizon-forge: open the Trash.
+                        if (!app_launch.launchExec(self.app.gpa, self.app.io, "/usr/libexec/bazzite-horizon-trash open")) {
+                            logz.err("activate: could not open the Trash", .{});
+                        }
+                        return;
+                    },
+""" + click)
+s = s.replace(menu, """            .trash => blk: {
+                // horizon-forge: right click asks to empty the Trash.
+                _ = app_launch.launchExec(self.app.gpa, self.app.io, "/usr/libexec/bazzite-horizon-trash empty");
+                break :blk false;
+            },
+""" + menu)
+p.write_text(s)
+print("horizon-forge: dock Trash button opens / empties the Trash")
+PY
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2

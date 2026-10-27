@@ -363,3 +363,11 @@ horizon-asus ACTION="":
     echo "Open ROG Control Center from the app menu for fans, keyboard lighting and the"
     echo "battery charge limit. Use 'ujust horizon-gpu' for graphics switching, not ROG"
     echo "Control Center's GPU mode, so the two don't fight."
+
+# Install OBS Studio (system-wide, no reboot)
+horizon-obs:
+    ujust horizon-install obs-studio
+
+# Install Heroic Games Launcher for Epic, GOG and Amazon games (system-wide, no reboot)
+horizon-heroic:
+    ujust horizon-install heroic-games-launcher

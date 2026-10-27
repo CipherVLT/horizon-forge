@@ -82,7 +82,7 @@ sudo dd if=bazzite-horizon-nvidia-20261024.iso of=/dev/sdX bs=4M conv=fsync stat
 | File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
 | Screenshots | Spectacle | [Satty](https://github.com/gabm/Satty) (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>): drag a box, then crop, draw, add text or blur, and Copy, Save or Save as. Saves to `~/Pictures/Screenshots` |
 | Default apps | Kate, KDE Menu Editor, Steam starting at login, Steam Big Picture Mode menu entries, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole, KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 (Chinese/Japanese/Korean input methods), Btrfs Assistant, Cardwire app, the Discourse forum link, Xwayland Video Bridge | KDE apps removed, keeping the components Bazzite needs to run. kitty is the terminal |
-| Added (system packages) | | Firefox, OBS Studio, gedit, ProtonPlus, Heroic Games Launcher, Strata, GameMode, Wine (latest development release from [Kron4ek](https://github.com/Kron4ek/Wine-Builds), NTSync on) |
+| Added (system packages) | | Firefox, gedit, ProtonPlus, Strata, GameMode, Wine (latest development release from [Kron4ek](https://github.com/Kron4ek/Wine-Builds), NTSync on) |
 | CPU while gaming | `powersave` governor, balanced profile all the time (GameMode removed) | GameMode switches to the `performance` governor and power profile while a game runs, then restores your profile. Use `gamemoderun %command%` in Steam's Launch Options |
 | MangoHud CPU power | Not shown (RAPL counters are root-only) | Shown |
 | Codecs | Full (FFmpeg, H.264/H.265, AAC, hardware video decode) | Same, unchanged |
@@ -96,6 +96,8 @@ Optional, installed only when you want them (keeps the ISO small):
 ```bash
 ujust horizon-install <app> # install apps from Fedora/Terra, no reboot
 ujust horizon-remove <app>  # remove them again (after a reboot)
+ujust horizon-obs           # OBS Studio
+ujust horizon-heroic        # Heroic Games Launcher (Epic, GOG, Amazon)
 ujust horizon-gaming-check  # governor, power profile, GameMode, NTSync, Wine
 ujust horizon-yabridge      # Windows VST/CLAP plugins (Serum, ...) in Linux DAWs
 ujust horizon-bitwig        # Bitwig Studio from its official .deb, into your home folder

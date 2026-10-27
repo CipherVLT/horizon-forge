@@ -9,7 +9,7 @@ trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 cp -avf /ctx/system_files/. /
 chmod 0755 /usr/bin/event-horizon-session /usr/bin/EventHorizon /usr/bin/horizon-screenshot
 chmod 0755 /usr/libexec/bazzite-horizon-sdboot-sync
-chmod 0755 /usr/bin/strata /usr/libexec/bazzite-horizon-strata-theme
+chmod 0755 /usr/bin/strata /usr/libexec/bazzite-horizon-strata-theme /usr/libexec/bazzite-horizon-trash
 systemctl --global enable bazzite-horizon-strata-theme.path
 
 
