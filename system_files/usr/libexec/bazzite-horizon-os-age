@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+# Days since this system was installed, for fastfetch's "OS Age" line.
+# /var/home is created by the installer and, unlike /etc and /usr, is never
+# replaced by an update, so its birth time is the install date.
+born=$(stat -c %W /var/home 2>/dev/null)
+if [[ -z "${born}" || "${born}" == 0 || "${born}" == "-" ]]; then
+    born=$(stat -c %Y /var/home 2>/dev/null) || exit 0
+fi
+days=$(( ( $(date +%s) - born ) / 86400 ))
+if (( days == 1 )); then echo "1 day"; else echo "${days} days"; fi
