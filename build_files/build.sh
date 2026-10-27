@@ -215,6 +215,7 @@ bash /ctx/install-greeter.sh
 bash /ctx/install-wine.sh
 # Screenshot editor for Super+Shift+S (horizon-screenshot); see the script.
 bash /ctx/install-satty.sh
+bash /ctx/fastfetch.sh
 chmod 0755 /usr/libexec/bazzite-horizon-gamemode-power
 install -Dm0644 /usr/share/bazzite-horizon/gamemode.ini /usr/share/gamemode/gamemode.ini
 rpm -q gamemode
