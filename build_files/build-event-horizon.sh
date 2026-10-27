@@ -289,6 +289,39 @@ p.write_text(s)
 print("horizon-forge: idle Wi-Fi lists networks; settings Scan opens nmtui")
 PY
 
+# Local patch: the wallpaper gallery only ever showed the first page of
+# thumbnails. Its decode worker sleeps on a condition variable once its queue
+# is empty, and request() queued new work without signalling it, so every
+# thumbnail asked for after the first batch (page 2 onward) waited forever.
+python3 - <<'PY'
+import pathlib, sys
+for rel in ("src/ux/settings2/wallpaper_thumbs.zig", "src/ux/settings/wallpaper_thumbs.zig"):
+    p = pathlib.Path(rel)
+    if not p.exists():
+        continue
+    s = p.read_text()
+    old = """        self.requested.put(owned, {}) catch {
+            self.alloc.free(owned);
+            self.pend_len -= 1;
+            return false;
+        };
+        return true;
+    }"""
+    if s.count(old) != 1:
+        sys.exit(f"horizon-forge thumbnail patch: request() changed upstream in {p}")
+    s = s.replace(old, """        self.requested.put(owned, {}) catch {
+            self.alloc.free(owned);
+            self.pend_len -= 1;
+            return false;
+        };
+        // horizon-forge: wake the worker, which may be idle on the condvar.
+        _ = c.pthread_cond_signal(&self.cond);
+        return true;
+    }""")
+    p.write_text(s)
+    print(f"horizon-forge: wallpaper thumbnail worker woken on new requests ({rel})")
+PY
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
