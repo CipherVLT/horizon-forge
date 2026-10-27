@@ -162,8 +162,10 @@ Updates work exactly like Bazzite. They download in the background and apply on 
 
 ```bash
 ujust update          # system, Flatpaks and Homebrew
-sudo bootc upgrade    # system image only
+rpm-ostree upgrade    # system image only
 ```
+
+Use `rpm-ostree upgrade` rather than `sudo bootc upgrade`: once you've installed apps with `ujust horizon-install`, `horizon-asus` or `rpm-ostree install`, bootc refuses to update ("Deployment contains local rpm-ostree modifications"). rpm-ostree updates the system and keeps your apps.
 
 If an update ever misbehaves, pick the previous entry in the boot menu, or run `sudo bootc rollback` and reboot.
 
