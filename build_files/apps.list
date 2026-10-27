@@ -9,6 +9,8 @@
 
 # Files (the file manager, Strata, comes from install-strata.sh)
 gedit
+# File dialogs for Event Horizon's settings (wallpaper "Open Picker...")
+zenity
 
 # Web
 firefox
