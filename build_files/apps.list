@@ -17,12 +17,10 @@ firefox
 # Wi-Fi picker in a terminal (nmtui); the settings app's Scan button opens it
 NetworkManager-tui
 
-# Create
-obs-studio
-
 # Gaming (Steam itself already comes from Terra in Bazzite)
 protonplus
-heroic-games-launcher
+# OBS Studio and Heroic Games Launcher install on demand to keep the ISO
+# small: ujust horizon-obs / ujust horizon-heroic.
 # Bazzite removes GameMode; Horizon brings it back with its own config
 # (see system_files/usr/share/bazzite-horizon/gamemode.ini).
 gamemode
