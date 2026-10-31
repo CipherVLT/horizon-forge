@@ -19,8 +19,17 @@ mkdir -p "${config_home}/hypr/eh" "${config_home}/Event-Horizon"
 # Hyprland reads only Lua configs from 0.57 on, and 0.56 already prefers
 # hyprland.lua over hyprland.conf. Seed the Lua config once; an older
 # hyprland.conf is left in place (unused) for reference.
-if [[ ! -e "${config_home}/hypr/hyprland.lua" ]]; then
-    cp "${skel}/hypr/hyprland.lua" "${config_home}/hypr/hyprland.lua"
+hypr_lua="${config_home}/hypr/hyprland.lua"
+if [[ ! -e "${hypr_lua}" ]]; then
+    cp "${skel}/hypr/hyprland.lua" "${hypr_lua}"
+else
+    # Still an unedited copy of an older default? Then nothing of yours is
+    # in it: replace it with the current default so image updates reach it.
+    # A config you have changed is never touched.
+    current=$(sha256sum "${hypr_lua}" | cut -d' ' -f1)
+    if grep -qx "${current}" "${skel}/hypr/previous-defaults.sha256" 2>/dev/null; then
+        cp "${skel}/hypr/hyprland.lua" "${hypr_lua}"
+    fi
 fi
 
 # First login: point Event Horizon at a wallpaper so the desktop is not an

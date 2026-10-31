@@ -141,6 +141,14 @@ test -x /usr/bin/python3
 test -f /usr/share/wallpapers/convergence.png
 test -f /usr/share/wayland-sessions/event-horizon.desktop
 test -f /usr/share/event-horizon/skel/hypr/hyprland.lua
+# The current default must not be listed as an "older default", or every
+# login would keep re-copying it over itself (harmless) and a forgotten list
+# update would go unnoticed.
+if grep -qx "$(sha256sum /usr/share/event-horizon/skel/hypr/hyprland.lua | cut -d' ' -f1)" \
+        /usr/share/event-horizon/skel/hypr/previous-defaults.sha256; then
+    echo "::error title=build.sh::skel hyprland.lua is listed in previous-defaults.sha256"
+    exit 1
+fi
 # The default config must at least be valid Lua (Hyprland itself can't run
 # here). luac comes from a throwaway install and is removed again.
 had_lua=0
