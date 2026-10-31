@@ -127,7 +127,7 @@ ujust horizon-remove discord              # remove it again
 1. Log in. **Event Horizon** is the only session on the login screen.
 2. On the first login you get:
    - **[Strata](https://github.com/lgse/strata)** as the file manager. It also answers "Show in folder" from Firefox, Steam and other apps.
-   - A Hyprland config in `~/.config/hypr/hyprland.conf`. It's yours to edit; updates never overwrite it.
+   - A Hyprland config in `~/.config/hypr/hyprland.lua` (Hyprland's Lua format). It's yours to edit; updates never overwrite it.
    - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
 3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
 
