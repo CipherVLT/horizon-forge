@@ -14,8 +14,7 @@ systemctl --global enable bazzite-horizon-strata-theme.path
 
 
 install -d /etc/skel/.config/hypr/eh
-cp /usr/share/event-horizon/skel/hypr/hyprland.conf /etc/skel/.config/hypr/hyprland.conf
-cp /usr/share/event-horizon/skel/hypr/eh/colors.conf /etc/skel/.config/hypr/eh/colors.conf
+cp /usr/share/event-horizon/skel/hypr/hyprland.lua /etc/skel/.config/hypr/hyprland.lua
 
 if ! dnf5 copr --help >/dev/null 2>&1; then
     dnf5 install -y dnf5-plugins
@@ -85,15 +84,14 @@ rm -f /etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop
 dnf5 install -y --skip-unavailable hyprland-guiutils
 rpm -q hyprland-guiutils || echo "WARNING: hyprland-guiutils is not in the copr; Hyprland will warn at login" >&2
 
-# The seeded config is hyprlang (.conf), and Event Horizon writes its
-# colors.conf in that format too. Hyprland 0.57 drops .conf support, so
-# refuse to publish an image that would come up with no config at all.
-# Remove this guard once the config (and Event Horizon) move to Lua.
+# The seeded config is Lua (hyprland.lua): Hyprland 0.57 reads only Lua,
+# and 0.56 is the first release that can. Refuse anything older.
 hypr_ver=$(rpm -q --qf '%{VERSION}' hyprland)
-if [[ "$(printf '%s\n0.57\n' "${hypr_ver}" | sort -V | head -n 1)" == "0.57" ]]; then
-    echo "Hyprland ${hypr_ver} no longer reads hyprland.conf; migrate the config to Lua first." >&2
+if [[ "$(printf '%s\n0.56\n' "${hypr_ver}" | sort -V | head -n 1)" != "0.56" ]]; then
+    echo "::error title=build.sh::Hyprland ${hypr_ver} can't read the Lua config (needs 0.56 or newer)"
     exit 1
 fi
+echo "Hyprland ${hypr_ver}"
 
 dnf5 copr disable -y nett00n/hyprland || true
 rm -f /etc/yum.repos.d/*nett00n*hyprland*.repo
@@ -142,7 +140,14 @@ test -x /usr/libexec/strata/strata
 test -x /usr/bin/python3
 test -f /usr/share/wallpapers/convergence.png
 test -f /usr/share/wayland-sessions/event-horizon.desktop
-test -f /usr/share/event-horizon/skel/hypr/hyprland.conf
+test -f /usr/share/event-horizon/skel/hypr/hyprland.lua
+# The default config must at least be valid Lua (Hyprland itself can't run
+# here). luac comes from a throwaway install and is removed again.
+had_lua=0
+rpm -q lua >/dev/null 2>&1 && had_lua=1
+dnf5 install -y lua
+luac -p /usr/share/event-horizon/skel/hypr/hyprland.lua
+(( had_lua )) || dnf5 remove -y lua
 test -e /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 test -x /usr/libexec/bazzite-horizon-sdboot-sync
 test -f /usr/lib/systemd/system/bazzite-horizon-sdboot-sync.service
