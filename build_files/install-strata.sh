@@ -10,9 +10,9 @@
 # Strata is the file manager: the folder handler in the Hyprland session
 # (trim-desktop.sh writes hyprland-mimeapps.list) and the
 # org.freedesktop.FileManager1 D-Bus service that "Show in folder" in
-# Firefox, Steam and others calls. Its file-chooser portal is left opt-in
-# (Strata > Settings > General > System file chooser); Open/Save dialogs
-# stay on the KDE portal until a user turns it on.
+# Firefox, Steam and others calls. It is also the Open/Save dialog of every
+# app in the Hyprland session (the XDG FileChooser portal), with the GTK
+# dialog as fallback.
 set -euo pipefail
 # Show the failing line on the GitHub run page (as an annotation).
 trap 'echo "::error title=install-strata.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -67,6 +67,31 @@ install -Dm644 "${src}/SOURCE_COMMIT" /usr/share/licenses/strata/SOURCE_COMMIT
 install -Dm644 "${src}/io.github.lgse.Strata.FileManager1.service" \
     /usr/share/dbus-1/services/org.freedesktop.FileManager1.service
 grep -q '^Exec=/usr/bin/strata ' /usr/share/dbus-1/services/org.freedesktop.FileManager1.service
+
+# Open/Save dialogs (xdg-desktop-portal FileChooser). Portal metadata and
+# the backend's D-Bus activation, system-wide.
+install -Dm644 "${src}/portal/strata.portal" \
+    /usr/share/xdg-desktop-portal/portals/strata.portal
+sed 's|@STRATA_EXECUTABLE@|/usr/bin/strata|' \
+    "${src}/portal/org.freedesktop.impl.portal.desktop.strata.service.in" \
+    > /usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.strata.service
+chmod 644 /usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.strata.service
+grep -qx 'Exec=/usr/bin/strata --portal' \
+    /usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.strata.service
+# Prefer Strata in the Hyprland session, keeping Hyprland's other portal
+# choices. /etc/xdg overrides the copy xdg-desktop-portal-hyprland ships in
+# /usr/share; a user's own ~/.config/xdg-desktop-portal file still wins.
+hypr_portals=/usr/share/xdg-desktop-portal/hyprland-portals.conf
+install -d /etc/xdg/xdg-desktop-portal
+{
+    if [[ -f "${hypr_portals}" ]]; then
+        grep -v '^org\.freedesktop\.impl\.portal\.FileChooser=' "${hypr_portals}"
+    else
+        printf '[preferred]\ndefault=hyprland;gtk\n'
+    fi
+    echo "org.freedesktop.impl.portal.FileChooser=strata;gtk;kde"
+} > /etc/xdg/xdg-desktop-portal/hyprland-portals.conf
+cat /etc/xdg/xdg-desktop-portal/hyprland-portals.conf
 
 desktop-file-validate /usr/share/applications/io.github.lgse.Strata.desktop
 if ldd /usr/libexec/strata/strata | grep -F 'not found'; then

@@ -219,6 +219,20 @@ for pkg in "${apps[@]}"; do
     install_app "${pkg}"
 done
 
+# Firefox: use the system Open/Save dialog (the FileChooser portal, Strata)
+# instead of its built-in GTK one.
+ff_done=0
+for ff in /usr/lib64/firefox /usr/lib/firefox; do
+    [[ -d "${ff}/browser" ]] || continue
+    install -d "${ff}/browser/defaults/preferences"
+    printf '%s\n' \
+        '// Bazzite Horizon: Open/Save dialogs through xdg-desktop-portal (Strata).' \
+        'pref("widget.use-xdg-desktop-portal.file-picker", 1);' \
+        > "${ff}/browser/defaults/preferences/bazzite-horizon-portal.js"
+    ff_done=1
+done
+(( ff_done )) || echo "::warning title=trim-desktop.sh::Firefox install folder not found; its file dialog stays GTK"
+
 # --- Open package repositories ----------------------------------------------------
 # Bazzite turns Terra off in the finished image, so `rpm-ostree install`
 # only searches Fedora. Leave Terra on (not terra-extras/terra-mesa, which
