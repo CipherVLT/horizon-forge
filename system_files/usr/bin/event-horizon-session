@@ -6,6 +6,9 @@ set -euo pipefail
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-Hyprland}"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-Hyprland}"
 export XDG_SESSION_TYPE=wayland
+# GTK 3 and Electron apps (Discord, ...) use the system Open/Save dialog,
+# Strata, through xdg-desktop-portal instead of their built-in one.
+export GTK_USE_PORTAL=1
 
 # Start everything from $HOME as spelled in /etc/passwd, so terminals open in
 # ~ instead of its resolved path (/var/home/<user> on Fedora atomic).
