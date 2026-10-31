@@ -40,9 +40,13 @@ hl.config({
     },
 
     general = {
-        gaps_in = 4,
-        gaps_out = 10,
+        -- Tight, even spacing: 2 px between windows, 4 px to the screen
+        -- edges, so tiles line up with the monitor without wasted space.
+        gaps_in = 2,
+        gaps_out = 4,
         border_size = 2,
+        -- Drag the gap or border between two windows to resize them.
+        resize_on_border = true,
         col = {
             active_border = "rgba(e4a15aee)",
             inactive_border = "rgba(2c3038aa)",
@@ -52,7 +56,7 @@ hl.config({
     },
 
     decoration = {
-        rounding = 10,
+        rounding = 8,
         -- Frosted glass behind see-through windows (kitty, see
         -- /etc/xdg/kitty/kitty.conf).
         blur = {
@@ -115,6 +119,12 @@ end
 
 hl.bind(key("mouse:272"), hl.dsp.window.drag(), { mouse = true })
 hl.bind(key("mouse:273"), hl.dsp.window.resize(), { mouse = true })
+
+-- Resize the focused window from the keyboard, 30 px per press.
+hl.bind(key("ALT + right"), hl.dsp.window.resize({ x = 30, y = 0, relative = true }))
+hl.bind(key("ALT + left"), hl.dsp.window.resize({ x = -30, y = 0, relative = true }))
+hl.bind(key("ALT + up"), hl.dsp.window.resize({ x = 0, y = -30, relative = true }))
+hl.bind(key("ALT + down"), hl.dsp.window.resize({ x = 0, y = 30, relative = true }))
 
 -- Window border colours from Event Horizon (rewritten when you pick a
 -- wallpaper); last, so they win over the defaults above.
