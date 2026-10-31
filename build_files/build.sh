@@ -218,6 +218,18 @@ done
 # exists in the image but not in that builder.
 sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' /etc/yum.repos.d/*.repo
 
+# Dock start button: Event Horizon paints the logo named by os-release
+# (LOGO=bazzite-logo) but only looks in the icon theme's apps/ folders.
+# Bazzite keeps its logo under places/, so the dock fell through to
+# ID_LIKE=fedora and showed the Fedora logo. Make the Bazzite logo findable.
+bazzite_logo=/usr/share/icons/hicolor/scalable/places/bazzite-logo.svg
+if [[ -f "${bazzite_logo}" ]]; then
+    install -Dm644 "${bazzite_logo}" /usr/share/icons/hicolor/scalable/apps/bazzite-logo.svg
+else
+    echo "::warning title=build.sh::${bazzite_logo} not found; the dock keeps the Fedora logo"
+fi
+grep -q '^LOGO=bazzite-logo$' /usr/lib/os-release || echo "::warning title=build.sh::os-release LOGO is not bazzite-logo"
+
 bash /ctx/trim-desktop.sh
 bash /ctx/install-greeter.sh
 
