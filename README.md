@@ -154,6 +154,8 @@ Tip: in the file manager, press **Ctrl + H** to show hidden files such as `~/.co
 | <kbd>Super</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Go to workspace |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Send window to workspace |
 | <kbd>Super</kbd> + left / right mouse drag | Move / resize window |
+| Drag the gap or border between windows | Resize the windows on both sides |
+| <kbd>Super</kbd> + <kbd>Alt</kbd> + arrows | Resize the focused window |
 | <kbd>Super</kbd> + <kbd>M</kbd> | Log out |
 
 ---
