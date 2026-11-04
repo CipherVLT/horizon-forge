@@ -227,6 +227,10 @@ for f in /etc/xdg/autostart/*.desktop; do
     echo "autostart: not started under Hyprland: $f"
 done
 
+# Fedora 45 keeps repo files in /usr/share/dnf5/repos.d; rpm-ostree and the
+# ISO builder only read /etc/yum.repos.d (see sync-repos.sh).
+bash /ctx/sync-repos.sh
+
 # The ISO builder depsolves outside the image. Terra file key
 # exists in the image but not in that builder.
 sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' /etc/yum.repos.d/*.repo
