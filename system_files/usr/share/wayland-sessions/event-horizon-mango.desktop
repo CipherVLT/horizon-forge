@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Event Horizon (Mango)
-Comment=Mango with the Event Horizon shell, same keybinds as Hyprland
+Comment=Mango with the Event Horizon shell
 Exec=/usr/bin/event-horizon-session --mango
 TryExec=/usr/bin/mango
 Type=Application

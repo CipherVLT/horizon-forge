@@ -30,10 +30,14 @@ Bazzite's foundation stays: Steam, Gamescope, the BORE-scheduled kernel, drivers
 
 ## Pick your image
 
-| Your graphics | Image | Based on |
-| --- | --- | --- |
-| **AMD** or **Intel** | `bazzite-horizon` | `bazzite:stable` (Bazzite 45, Fedora 45) |
-| **NVIDIA** GTX 16 / RTX 20 series and newer, including laptops with Intel + NVIDIA | `bazzite-horizon-nvidia` | `bazzite-nvidia-open:stable` (Bazzite 45, Fedora 45) |
+Like Bazzite's KDE and GNOME editions, each image has one desktop: Event Horizon on **Hyprland** or on **Mango**. Both have the same shell, shortcuts, launcher and colors. Hyprland has more effects and options; Mango is a smaller, lighter compositor.
+
+| Your graphics | Hyprland edition | Mango edition | Based on |
+| --- | --- | --- | --- |
+| **AMD** or **Intel** | `bazzite-horizon` | `bazzite-horizon-mango` | `bazzite:stable` (Bazzite 45, Fedora 45) |
+| **NVIDIA** GTX 16 / RTX 20 series and newer, including laptops with Intel + NVIDIA | `bazzite-horizon-nvidia` | `bazzite-horizon-mango-nvidia` | `bazzite-nvidia-open:stable` (Bazzite 45, Fedora 45) |
+
+To change edition later without reinstalling: `sudo bootc switch ghcr.io/ciphervlt/<image>:latest` and reboot. Your home folder stays as it is.
 
 Every build checks Universal Blue's signature on the exact Bazzite image it starts from, and stops if it isn't Fedora 45.
 
@@ -50,7 +54,7 @@ Bazzite Horizon is installed from its ISO.
 **1. Download the ISO**
 
 1. Open **[Actions → Build disk images](https://github.com/CipherVLT/horizon-forge/actions/workflows/build-disk.yml)** and click the most recent run with a green check.
-2. Under **Artifacts**, download the one for your graphics (about 7 GB): `anaconda-iso-bazzite-horizon-<date>` for AMD/Intel or `anaconda-iso-bazzite-horizon-nvidia-<date>` for NVIDIA. You need to be signed in to GitHub, and artifacts expire after 90 days.
+2. Under **Artifacts**, download the one for your edition and graphics (about 7 GB), for example `anaconda-iso-bazzite-horizon-<date>` (Hyprland, AMD/Intel) or `anaconda-iso-bazzite-horizon-mango-nvidia-<date>` (Mango, NVIDIA). You need to be signed in to GitHub, and artifacts expire after 90 days.
 3. Unzip it. The installer is named after the image and its build date, for example `bazzite-horizon-nvidia-20261024.iso`.
 4. Check it. In the unzipped folder:
 
@@ -94,7 +98,7 @@ sudo dd if=bazzite-horizon-nvidia-20261024.iso of=/dev/sdX bs=4M conv=fsync stat
 
 | | Bazzite (KDE) | Bazzite Horizon |
 | --- | --- | --- |
-| Desktop | KDE Plasma | Event Horizon on Hyprland or on Mango, same shortcuts in both (Plasma session hidden) |
+| Desktop | KDE Plasma (or GNOME, as a separate image) | Event Horizon on Hyprland (or Mango, as a separate image), same shortcuts in both (Plasma session hidden) |
 | Login screen | Plasma Login | SDDM with the [Pixie](https://github.com/xCaptaiN09/pixie-sddm) theme, Bazzite wallpaper, 12-hour clock |
 | File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
 | Screenshots | Spectacle | [Satty](https://github.com/gabm/Satty) (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>): drag a box, then crop, draw, add text or blur, and Copy, Save or Save as. Saves to `~/Pictures/Screenshots` |
@@ -142,12 +146,10 @@ ujust horizon-remove discord              # remove it again
 
 ## First login
 
-1. On the login screen, pick a session (the session menu in the corner) and log in:
-   - **Event Horizon (Hyprland)**, the default.
-   - **Event Horizon (Mango)**: the same shell, shortcuts, launcher and colors on the [Mango](https://github.com/mangowm/mango) compositor.
+1. Log in. Your edition's session, **Event Horizon (Hyprland)** or **Event Horizon (Mango)**, is the only one on the login screen.
 2. On the first login you get:
    - **[Strata](https://github.com/lgse/strata)** as the file manager. It also answers "Show in folder" from Firefox, Steam and other apps.
-   - A config for the session you picked: `~/.config/hypr/hyprland.lua` (Hyprland's Lua format) or `~/.config/mango/config.conf`. They're yours to edit, and updates never overwrite your changes.
+   - Your compositor's config: `~/.config/hypr/hyprland.lua` (Hyprland's Lua format) or `~/.config/mango/config.conf` ([Mango](https://github.com/mangowm/mango)). They're yours to edit, and updates never overwrite your changes.
    - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
 3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
 
@@ -157,7 +159,7 @@ Tip: in the file manager, press **Ctrl + H** to show hidden files such as `~/.co
 
 ## Keyboard shortcuts
 
-The same in both sessions. <kbd>Super</kbd> is the Windows key. <kbd>Super</kbd> + <kbd>H</kbd> lists every shortcut, searchable.
+The same in both editions. <kbd>Super</kbd> is the Windows key. <kbd>Super</kbd> + <kbd>H</kbd> lists every shortcut, searchable.
 
 | Keys | Action |
 | --- | --- |

@@ -48,11 +48,12 @@ seed_config() {
 # Hyprland reads only Lua configs from 0.57 on, and 0.56 already prefers
 # hyprland.lua over hyprland.conf. An older hyprland.conf is left in place
 # (unused) for reference.
-seed_config "${skel}/hypr/hyprland.lua" "${config_home}/hypr/hyprland.lua" \
-    "${skel}/hypr/previous-defaults.sha256"
 if [[ "${compositor}" == mango ]]; then
     seed_config "${skel}/mango/config.conf" "${config_home}/mango/config.conf" \
         "${skel}/mango/previous-defaults.sha256"
+else
+    seed_config "${skel}/hypr/hyprland.lua" "${config_home}/hypr/hyprland.lua" \
+        "${skel}/hypr/previous-defaults.sha256"
 fi
 
 # First login: point Event Horizon at a wallpaper so the desktop is not an

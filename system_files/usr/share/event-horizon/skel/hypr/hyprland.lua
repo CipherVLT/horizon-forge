@@ -89,8 +89,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("horizon")
 end)
 
--- Keybinds: the same set as the Mango session (~/.config/mango/config.conf),
--- so both sessions work alike.
+-- Keybinds: the same set as the Mango edition of Bazzite Horizon, so both
+-- editions work alike.
 -- Super+H lists every bind with its description.
 local mainMod = "SUPER"
 local function key(k) return mainMod .. " + " .. k end

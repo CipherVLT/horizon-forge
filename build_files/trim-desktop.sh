@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Turn Bazzite's KDE desktop into a Hyprland-only creator/coder desktop.
+# Turn Bazzite's KDE desktop into an Event Horizon desktop (on Hyprland or
+# Mango, the image's edition) for gamers and creators.
 #
 # - Removes KDE apps that duplicate Event Horizon or have no use here, plus
 #   Waydroid and input-remapper.
@@ -181,9 +182,9 @@ for f in /usr/share/applications/*.desktop; do
 done
 
 # Terminal for desktop entries with Terminal=true and xdg-terminal-exec,
-# now that Konsole is gone: kitty in the Hyprland session.
+# now that Konsole is gone: kitty in the Event Horizon session.
 install -d /usr/share/xdg-terminal-exec
-printf 'kitty.desktop\n' > /usr/share/xdg-terminal-exec/hyprland-xdg-terminals.list
+printf 'kitty.desktop\n' > "/usr/share/xdg-terminal-exec/${BAZZITE_HORIZON_DESKTOP:-hyprland}-xdg-terminals.list"
 
 # --- System-wide apps (build_files/apps.list) ----------------------------------
 mapfile -t apps < <(grep -v -E '^[[:space:]]*(#|$)' /ctx/apps.list | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
@@ -250,8 +251,8 @@ awk '/^\[/{sec=($0=="[terra]")} sec && /^enabled=/{$0="enabled=1"} {print}' \
 mv "${terra_repo}.new" "${terra_repo}"
 grep -A20 '^\[terra\]' "${terra_repo}" | grep -m1 '^enabled=1'
 
-# Default folder handler in the Hyprland session: Strata.
-cat > /usr/share/applications/hyprland-mimeapps.list <<'EOF'
+# Default folder handler in the Event Horizon session: Strata.
+cat > "/usr/share/applications/${BAZZITE_HORIZON_DESKTOP:-hyprland}-mimeapps.list" <<'EOF'
 [Default Applications]
 inode/directory=io.github.lgse.Strata.desktop;
 EOF
@@ -263,8 +264,11 @@ rm -f /usr/share/wayland-sessions/plasma.desktop \
       /usr/share/xsessions/plasmax11.desktop
 
 # --- Checks --------------------------------------------------------------------
-test -f /usr/share/wayland-sessions/event-horizon.desktop
-test -x /usr/bin/Hyprland
+test -f "${BAZZITE_HORIZON_SESSION:-/usr/share/wayland-sessions/event-horizon.desktop}"
+case "${BAZZITE_HORIZON_DESKTOP:-hyprland}" in
+    hyprland) test -x /usr/bin/Hyprland ;;
+    mango) test -x /usr/bin/mango ;;
+esac
 test -x /usr/bin/strata
 # Strata should be the only "Show in folder" handler.
 mapfile -t fm1 < <(grep -l -x 'Name=org.freedesktop.FileManager1' /usr/share/dbus-1/services/*.service)

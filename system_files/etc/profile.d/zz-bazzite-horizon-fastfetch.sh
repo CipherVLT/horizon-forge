@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Bazzite Horizon: show fastfetch when a terminal window opens (as in
 # Perihelion and Veyl OS). Only in interactive shells of a graphical
 # terminal, never over SSH or on a text console, and once per window

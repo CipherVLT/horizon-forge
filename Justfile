@@ -102,6 +102,9 @@ build $target_image=image_name $tag=default_tag:
     if [[ -n "${BASE_IMAGE:-}" ]]; then
         BUILD_ARGS+=("--build-arg" "BASE_IMAGE=${BASE_IMAGE}")
     fi
+    if [[ -n "${DESKTOP:-}" ]]; then
+        BUILD_ARGS+=("--build-arg" "DESKTOP=${DESKTOP}")
+    fi
     LABELS=()
     if [[ -z "$(git status -s)" ]]; then
         GIT_SHA=$(git rev-parse --short HEAD)

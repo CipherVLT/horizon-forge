@@ -78,26 +78,25 @@ sed 's|@STRATA_EXECUTABLE@|/usr/bin/strata|' \
 chmod 644 /usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.strata.service
 grep -qx 'Exec=/usr/bin/strata --portal' \
     /usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.strata.service
-# Prefer Strata for Open/Save in both sessions (Hyprland and Mango), keeping
-# each compositor's other portal choices. /etc/xdg overrides the copy the
+# Prefer Strata for Open/Save in this edition's session (Hyprland or Mango),
+# keeping the compositor's other portal choices. /etc/xdg overrides the copy the
 # compositor's portal package ships in /usr/share; a user's own
 # ~/.config/xdg-desktop-portal file still wins.
 install -d /etc/xdg/xdg-desktop-portal
-for desktop in hyprland mango; do
-    shipped="/usr/share/xdg-desktop-portal/${desktop}-portals.conf"
-    out="/etc/xdg/xdg-desktop-portal/${desktop}-portals.conf"
-    {
-        if [[ -f "${shipped}" ]]; then
-            grep -v '^org\.freedesktop\.impl\.portal\.FileChooser=' "${shipped}"
-        elif [[ "${desktop}" == hyprland ]]; then
-            printf '[preferred]\ndefault=hyprland;gtk\n'
-        else
-            printf '[preferred]\ndefault=wlr;gtk\n'
-        fi
-        echo "org.freedesktop.impl.portal.FileChooser=strata;gtk;kde"
-    } > "${out}"
-    echo "--- ${out}"; cat "${out}"
-done
+desktop="${BAZZITE_HORIZON_DESKTOP:-hyprland}"
+shipped="/usr/share/xdg-desktop-portal/${desktop}-portals.conf"
+out="/etc/xdg/xdg-desktop-portal/${desktop}-portals.conf"
+{
+    if [[ -f "${shipped}" ]]; then
+        grep -v '^org\.freedesktop\.impl\.portal\.FileChooser=' "${shipped}"
+    elif [[ "${desktop}" == hyprland ]]; then
+        printf '[preferred]\ndefault=hyprland;gtk\n'
+    else
+        printf '[preferred]\ndefault=wlr;gtk\n'
+    fi
+    echo "org.freedesktop.impl.portal.FileChooser=strata;gtk;kde"
+} > "${out}"
+echo "--- ${out}"; cat "${out}"
 
 desktop-file-validate /usr/share/applications/io.github.lgse.Strata.desktop
 if ldd /usr/libexec/strata/strata | grep -F 'not found'; then

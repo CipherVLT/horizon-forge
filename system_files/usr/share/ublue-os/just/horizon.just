@@ -5,6 +5,7 @@ horizon-info:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Bazzite Horizon"
+    echo "Desktop: Event Horizon on $(cat /usr/share/bazzite-horizon/desktop 2>/dev/null || echo hyprland)"
     echo "Base: ${BAZZITE_HORIZON_BASE:-$(cat /usr/share/bazzite-horizon/base-image 2>/dev/null || echo unknown)}"
     if [[ -f /usr/share/bazzite-horizon/event-horizon.ref ]]; then
         echo "Event Horizon: $(tr -d '[:space:]' < /usr/share/bazzite-horizon/event-horizon.ref)"

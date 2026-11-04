@@ -73,6 +73,6 @@ for f in Main.qml metadata.desktop theme.conf components/Clock.qml components/Po
     test -s "${theme}/${f}"
 done
 grep -q '^use24HourClock=false' "${theme}/theme.conf"
-test -f /usr/share/wayland-sessions/event-horizon.desktop
+test -f "${BAZZITE_HORIZON_SESSION:-/usr/share/wayland-sessions/event-horizon.desktop}"
 id sddm >/dev/null 2>&1 || grep -qs -w sddm /usr/lib/sysusers.d/*.conf
 echo "greeter: SDDM + Pixie enabled"

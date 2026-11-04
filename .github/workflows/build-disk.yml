@@ -12,6 +12,8 @@ on:
         options:
           - bazzite-horizon
           - bazzite-horizon-nvidia
+          - bazzite-horizon-mango
+          - bazzite-horizon-mango-nvidia
       upload-to-s3:
         description: "Publish the ISO to Cloudflare R2 (needs the R2 secrets)"
         required: false

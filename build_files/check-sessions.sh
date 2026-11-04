@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Both login sessions (Event Horizon on Hyprland and on Mango) must have
-# every program their default config launches, and the Mango config must
+# This edition's login session (Event Horizon on Hyprland or on Mango) must
+# have every program its default config launches, and a Mango config must
 # parse with the Mango that was installed. Runs last in build.sh, after
 # every package is in.
 set -euo pipefail
@@ -10,11 +10,14 @@ skel=/usr/share/event-horizon/skel
 hypr="${skel}/hypr/hyprland.lua"
 mango_cfg="${skel}/mango/config.conf"
 
-# `mango -p` only reads the file; it needs no display.
-if ! out=$(mango -p -c "${mango_cfg}" 2>&1); then
-    printf '%s\n' "${out}" >&2
-    echo "::error title=check-sessions.sh::the Mango config does not parse with $(rpm -q mangowm)"
-    exit 1
+desktop="${BAZZITE_HORIZON_DESKTOP:-hyprland}"
+if [[ "${desktop}" == mango ]]; then
+    # `mango -p` only reads the file; it needs no display.
+    if ! out=$(mango -p -c "${mango_cfg}" 2>&1); then
+        printf '%s\n' "${out}" >&2
+        echo "::error title=check-sessions.sh::the Mango config does not parse with $(rpm -q mangowm)"
+        exit 1
+    fi
 fi
 
 # The current Mango default must not be listed as an older default.
@@ -32,13 +35,18 @@ check() {
         missing=1
     fi
 }
-while read -r prog; do check "${prog}" "hyprland.lua"; done < <(
-    grep -oE 'exec_cmd\("[^" ;]+' "${hypr}" | sed 's/exec_cmd("//' | sort -u)
-while read -r prog; do check "${prog}" "mango/config.conf"; done < <(
-    sed -n -E 's/^(bind[a-z]*|mousebind|axisbind|gesturebind)=[^,]*,[^,]*,spawn(_shell)?,([^ ,;]+).*/\3/p; s/^exec_once=([^ ]+).*/\1/p' \
-        "${mango_cfg}" | sort -u)
+if [[ "${desktop}" == hyprland ]]; then
+    while read -r prog; do check "${prog}" "hyprland.lua"; done < <(
+        grep -oE 'exec_cmd\("[^" ;]+' "${hypr}" | sed 's/exec_cmd("//' | sort -u)
+    compositor_tool=hyprctl
+else
+    while read -r prog; do check "${prog}" "mango/config.conf"; done < <(
+        sed -n -E 's/^(bind[a-z]*|mousebind|axisbind|gesturebind)=[^,]*,[^,]*,spawn(_shell)?,([^ ,;]+).*/\3/p; s/^exec_once=([^ ]+).*/\1/p' \
+            "${mango_cfg}" | sort -u)
+    compositor_tool=mmsg
+fi
 # Programs the helper scripts call.
-for prog in fuzzel nwg-drawer swaylock swayidle mmsg hyprctl horizon-wallpaper notify-send; do
+for prog in fuzzel nwg-drawer swaylock swayidle "${compositor_tool}" horizon-wallpaper notify-send; do
     check "${prog}" "a horizon-* helper"
 done
 (( missing == 0 )) || exit 1
@@ -52,6 +60,10 @@ for opt in $(grep -oE -- '--[a-z-]+' /usr/bin/horizon-lock | sort -u); do
     }
 done
 
-test -f /etc/xdg/xdg-desktop-portal/mango-portals.conf
+test -f "/etc/xdg/xdg-desktop-portal/${desktop}-portals.conf"
+test -f "${BAZZITE_HORIZON_SESSION:?}"
+# Exactly one Event Horizon session on the login screen.
+n=$(find /usr/share/wayland-sessions -name 'event-horizon*.desktop' | wc -l)
+(( n == 1 )) || { echo "::error title=check-sessions.sh::${n} Event Horizon sessions installed, expected 1"; exit 1; }
 test -f /etc/xdg/fuzzel/fuzzel.ini
-echo "sessions: Hyprland and Mango configs check out"
+echo "sessions: the ${desktop} edition checks out"
