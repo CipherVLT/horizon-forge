@@ -139,6 +139,39 @@ jobs:
             echo "ISO: ${name}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # Sign the ISO's .sha256 with the repo's cosign key (the SIGNING_SECRET
+      # that also signs the images), so a download can be checked against
+      # cosign.pub. No transparency-log upload: the signature stays private
+      # to whoever has the ISO. Skipped, with a notice, until the key is set.
+      - name: Install Cosign
+        if: matrix.disk-type == 'anaconda-iso'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v3.1.2'
+
+      - name: Sign the ISO checksum
+        if: matrix.disk-type == 'anaconda-iso'
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ""
+          SOURCE_DIR: ${{ steps.build.outputs.output-directory }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${COSIGN_PRIVATE_KEY}" ]]; then
+            echo "::notice title=ISO checksum::SIGNING_SECRET is unset; the .sha256 is not signed"
+            exit 0
+          fi
+          while IFS= read -r sums; do
+            cosign sign-blob --yes --key env://COSIGN_PRIVATE_KEY --tlog-upload=false \
+              --new-bundle-format=false --use-signing-config=false \
+              --output-signature "${sums}.sig" "${sums}"
+            if [[ -f cosign.pub ]]; then
+              cosign verify-blob --key cosign.pub --insecure-ignore-tlog=true \
+                --signature "${sums}.sig" "${sums}"
+            fi
+            echo "Signed $(basename "${sums}")" >> "$GITHUB_STEP_SUMMARY"
+          done < <(find "${SOURCE_DIR}" -type f -name '*.iso.sha256')
+
       - name: Upload disk images and Checksum to Job Artifacts
         if: github.event_name != 'pull_request' && (inputs.upload-to-s3 != true || matrix.disk-type != 'anaconda-iso')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -164,6 +197,8 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ""
           SOURCE_DIR: ${{ steps.build.outputs.output-directory }}
         run: |
           set -euo pipefail
@@ -193,6 +228,12 @@ jobs:
           rclone copyto "${stage}/${name}" "R2:${R2_BUCKET}/${name}" \
             --s3-chunk-size 100M --s3-upload-concurrency 8 --stats 30s --stats-one-line
           rclone copyto "${stage}/${name}.sha256" "R2:${R2_BUCKET}/${name}.sha256"
+          if [[ -n "${COSIGN_PRIVATE_KEY}" ]]; then
+            cosign sign-blob --yes --key env://COSIGN_PRIVATE_KEY --tlog-upload=false \
+              --new-bundle-format=false --use-signing-config=false \
+              --output-signature "${stage}/${name}.sha256.sig" "${stage}/${name}.sha256"
+            rclone copyto "${stage}/${name}.sha256.sig" "R2:${R2_BUCKET}/${name}.sha256.sig"
+          fi
 
           {
             echo "### ISO published to Cloudflare R2"
@@ -200,6 +241,7 @@ jobs:
             if [[ -n "${R2_PUBLIC_URL}" ]]; then
               echo "- ${R2_PUBLIC_URL%/}/${name}"
               echo "- ${R2_PUBLIC_URL%/}/${name}.sha256"
+              [[ -z "${COSIGN_PRIVATE_KEY}" ]] || echo "- ${R2_PUBLIC_URL%/}/${name}.sha256.sig"
             else
               echo "Uploaded \`${name}\` to bucket \`${R2_BUCKET}\`. Set the repository variable R2_PUBLIC_URL to print download links here."
             fi

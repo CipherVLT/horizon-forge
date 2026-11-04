@@ -102,6 +102,7 @@ if [[ ! -d /ehroot/usr ]]; then
 fi
 cp -a /ehroot/. /
 
+bash /ctx/install-mango.sh
 bash /ctx/install-strata.sh
 
 install -d /usr/share/bazzite-horizon
@@ -202,14 +203,14 @@ done
 # only fail or duplicate work under Hyprland: vmware-user (VMware guests),
 # pam_kwallet_init (KWallet is not running in this session) and the KDE
 # UnifiedPush distributor. Hide them from the Hyprland session only; the
-# Plasma session still starts them.
+# Plasma session still starts them. Same for the Mango session.
 for f in /etc/xdg/autostart/*.desktop; do
     [[ -f "$f" ]] || continue
     grep -Eq '^Exec=.*(vmware-user|pam_kwallet_init|kunifiedpush)' "$f" || continue
     if grep -q '^NotShowIn=' "$f"; then
-        sed -i 's/^NotShowIn=/NotShowIn=Hyprland;/' "$f"
+        sed -i 's/^NotShowIn=/NotShowIn=Hyprland;mango;/' "$f"
     else
-        sed -i '/^\[Desktop Entry\]/a NotShowIn=Hyprland;' "$f"
+        sed -i '/^\[Desktop Entry\]/a NotShowIn=Hyprland;mango;' "$f"
     fi
     echo "autostart: not started under Hyprland: $f"
 done
@@ -259,5 +260,7 @@ fi
 if command -v just >/dev/null 2>&1 && [[ -f /usr/share/ublue-os/justfile ]]; then
     just --justfile /usr/share/ublue-os/justfile --summary >/dev/null
 fi
+
+bash /ctx/check-sessions.sh
 
 dnf5 clean all

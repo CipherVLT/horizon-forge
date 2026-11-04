@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Lock the screen (Super+L, the shell's Lock button, before sleep). Event
+# Horizon has no lock screen of its own; swayidle runs this when logind asks
+# for a lock (loginctl lock-session). Type your password and press Enter.
+pgrep -x swaylock >/dev/null && exit 0
+exec swaylock -f --color 1a1c18 \
+    --inside-color 2c3038 --ring-color e4a15a --key-hl-color f5d0a9 \
+    --line-color 00000000 --separator-color 00000000 --text-color e3e3dc \
+    --inside-ver-color 2c3038 --ring-ver-color 8fbcbb --text-ver-color e3e3dc \
+    --inside-wrong-color 2c3038 --ring-wrong-color bf616a --text-wrong-color e3e3dc \
+    --indicator-radius 80 --indicator-thickness 8 "$@"

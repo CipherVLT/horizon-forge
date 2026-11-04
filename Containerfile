@@ -17,12 +17,21 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     bash /ctx/build-event-horizon.sh
 
+# The Super+A app drawer (nwg-drawer), also compiled in a throwaway stage.
+FROM ${BASE_IMAGE} AS drawer-builder
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    bash /ctx/build-nwg-drawer.sh
+
 FROM ${BASE_IMAGE}
 ARG BASE_IMAGE
 ENV BAZZITE_HORIZON_BASE=${BASE_IMAGE}
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=bind,from=eh-builder,source=/ehroot,target=/ehroot \
+    --mount=type=bind,from=drawer-builder,source=/drawerroot,target=/drawerroot \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \

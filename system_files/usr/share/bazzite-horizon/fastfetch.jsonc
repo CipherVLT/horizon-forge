@@ -1,0 +1,141 @@
+// Bazzite Horizon fastfetch: Perihelion's / Veyl OS's tree layout, in
+// Bazzite's look. The logo and its colors are Bazzite's; the keys take
+// Bazzite's accent color (the `fastfetch` alias passes it with --color).
+// Installed over /usr/share/ublue-os/bazzite/fastfetch.jsonc by fastfetch.sh.
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "file",
+        "source": "/usr/share/ublue-os/bazzite/logo.txt",
+        "color": {
+            "1": "94",
+            "2": "47",
+            "3": "95",
+            "4": "0",
+            "5": "8",
+            "6": "55"
+        },
+        "padding": { "top": 1 }
+    },
+    "display": {
+        "separator": " ➜  "
+    },
+    "modules": [
+        {
+            "type": "title",
+            "key": " ",
+            "color": {
+                "user": "light_blue",
+                "at": "white",
+                "host": "magenta"
+            }
+        },
+        "break",
+        {
+            "type": "os",
+            "key": "OS   ",
+            "format": "{pretty-name}"
+        },
+        {
+            "type": "command",
+            "key": " ├ 󱋩 ",
+            "text": "/usr/libexec/bazzite-fetch-image"
+        },
+        {
+            "type": "kernel",
+            "key": " ├  ",
+            "format": "{1} {2}"
+        },
+        {
+            "type": "packages",
+            "key": " ├ 󰏖 "
+        },
+        {
+            "type": "shell",
+            "key": " └  "
+        },
+        "break",
+        {
+            "type": "wm",
+            "key": "WM   "
+        },
+        {
+            "type": "wmtheme",
+            "key": " ├ 󰉼 "
+        },
+        {
+            "type": "icons",
+            "key": " ├ 󰀻 "
+        },
+        {
+            "type": "cursor",
+            "key": " ├  "
+        },
+        {
+            "type": "terminal",
+            "key": " ├  "
+        },
+        {
+            "type": "terminalfont",
+            "key": " └  "
+        },
+        "break",
+        {
+            "type": "host",
+            "key": "PC   "
+        },
+        {
+            "type": "cpu",
+            "key": " ├  "
+        },
+        {
+            "type": "gpu",
+            "key": " ├ 󰢮 "
+        },
+        {
+            "type": "memory",
+            "key": " ├  "
+        },
+        {
+            "type": "swap",
+            "key": " ├ 󰓡 "
+        },
+        {
+            "type": "disk",
+            "key": " ├ 󰋊 ",
+            "hideFS": "overlay"
+        },
+        {
+            "type": "battery",
+            "key": " ├  "
+        },
+        {
+            "type": "gamepad",
+            "key": " ├ 󰖺 "
+        },
+        {
+            "type": "display",
+            "key": " └  "
+        },
+        "break",
+        {
+            "type": "command",
+            "key": "Age  ",
+            "text": "/usr/libexec/bazzite-horizon-os-age"
+        },
+        {
+            "type": "uptime",
+            "key": " ├ 󰥔 "
+        },
+        {
+            "type": "datetime",
+            "key": " └ 󰃰 "
+        },
+        "break",
+        {
+            "type": "colors",
+            "paddingLeft": 2,
+            "symbol": "circle"
+        }
+    ]
+}
