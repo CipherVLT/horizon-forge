@@ -35,7 +35,11 @@ on:
 
 env:
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
-  DEFAULT_TAG: "latest"
+  # Installs follow the Fedora release stream tag (keep it equal to
+  # build_files/bazzite-fedora.ref), so a machine installed from a Bazzite 45
+  # ISO stays on 45. Pull requests build from :latest, since the stream tag
+  # is only published from main.
+  DEFAULT_TAG: ${{ github.event_name == 'pull_request' && 'latest' || '45' }}
   BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest"
 
 concurrency:
@@ -89,6 +93,11 @@ jobs:
       - name: Point the ISO at this variant
         run: |
           set -euo pipefail
+          fedora=$(grep -v -e '^#' -e '^[[:space:]]*$' build_files/bazzite-fedora.ref | tr -d '[:space:]')
+          if [[ "${GITHUB_EVENT_NAME}" != pull_request && "${DEFAULT_TAG}" != "${fedora}" ]]; then
+            echo "::error::DEFAULT_TAG (${DEFAULT_TAG}) does not match build_files/bazzite-fedora.ref (${fedora})"
+            exit 1
+          fi
           sed -i "s|GHCR_IMAGE|${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}|g" disk_config/iso.toml
           grep -n "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}" disk_config/iso.toml
 

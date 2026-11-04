@@ -175,6 +175,11 @@ jobs:
           alias_tags="$(just generate-build-tags \
                         ${IMAGE_NAME} \
                         ${DEFAULT_TAG})"
+          # The Fedora release stream ("45", "45-<date>"): installs from the
+          # ISO follow this tag, so they stay on Bazzite 45 until switched
+          # by hand, even after :latest moves to a newer Fedora.
+          fedora=$(grep -v -e '^#' -e '^[[:space:]]*$' build_files/bazzite-fedora.ref | tr -d '[:space:]')
+          alias_tags="${alias_tags} ${fedora} ${fedora}-$(date +%Y%m%d)"
 
           echo "Tags for this Action..."
           echo "${alias_tags}"

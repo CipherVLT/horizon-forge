@@ -37,7 +37,7 @@ Like Bazzite's KDE and GNOME editions, each image has one desktop: Event Horizon
 | **AMD** or **Intel** | `bazzite-horizon` | `bazzite-horizon-mango` | `bazzite:stable` (Bazzite 45, Fedora 45) |
 | **NVIDIA** GTX 16 / RTX 20 series and newer, including laptops with Intel + NVIDIA | `bazzite-horizon-nvidia` | `bazzite-horizon-mango-nvidia` | `bazzite-nvidia-open:stable` (Bazzite 45, Fedora 45) |
 
-To change edition later without reinstalling: `sudo bootc switch ghcr.io/ciphervlt/<image>:latest` and reboot. Your home folder stays as it is.
+An install from the ISO follows the image's **`45` tag**: it gets every Bazzite 45 update, and stays on Bazzite 45 until you switch it yourself, even after a newer Fedora release comes out. To change edition later without reinstalling: `sudo bootc switch ghcr.io/ciphervlt/<image>:45` and reboot. Your home folder stays as it is.
 
 Every build checks Universal Blue's signature on the exact Bazzite image it starts from, and stops if it isn't Fedora 45.
 
