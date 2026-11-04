@@ -106,6 +106,11 @@ jobs:
           ref="${BASE_TAG%:*}@${digest}"
           if ! "${RUNNER_TEMP}/cosign2/cosign" verify --key build_files/bazzite-cosign.pub "${ref}" > /tmp/base-verify.json; then
             echo "::error title=Bazzite base::Universal Blue's signature does not check out for ${ref}"
+            # Show who did sign it (certificate identity and issuer), if anyone.
+            "${RUNNER_TEMP}/cosign2/cosign" tree "${ref}" || true
+            "${RUNNER_TEMP}/cosign2/cosign" verify --certificate-identity-regexp '.*' \
+              --certificate-oidc-issuer-regexp '.*' "${ref}" 2>&1 |
+              jq -r '.[] | .optional | {Subject, Issuer, githubWorkflowRepository, githubWorkflowRef}' 2>/dev/null || true
             exit 1
           fi
           labels=$(skopeo inspect --retry-times 3 --no-tags --format '{{json .Labels}}' "docker://${ref}")
