@@ -112,7 +112,9 @@ jobs:
               jq -r 'select(.Cert != null) | .Cert' | head -c 20000 |
               openssl x509 -noout -subject -issuer -ext subjectAltName 2>&1 || true
             "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" 2>/dev/null |
-              jq -c '{has_cert: (.Cert != null), bundle: (.Bundle != null), keys: keys}' || true
+              jq -r '.Bundle.Payload.body' | base64 -d |
+              jq -r '.kind, (.spec.signature.publicKey.content // .spec.signature.publicKey // "" | tostring)' |
+              { read -r kind; read -r key; echo "rekor kind: ${kind}"; base64 -d <<<"${key}" 2>/dev/null || echo "${key}"; } || true
             exit 1
           fi
           labels=$(skopeo inspect --retry-times 3 --no-tags --format '{{json .Labels}}' "docker://${ref}")
