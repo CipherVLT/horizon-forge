@@ -43,7 +43,8 @@ env:
   BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  # One group per edition, so building several ISOs at once does not cancel them.
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.variant || 'pr' }}
   cancel-in-progress: true
 
 jobs:
