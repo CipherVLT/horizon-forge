@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Turn Bazzite's KDE desktop into a Hyprland-only creator/coder desktop.
+# Turn Bazzite's KDE desktop into an Event Horizon desktop (on Hyprland or
+# Mango, the image's edition) for gamers and creators.
 #
 # - Removes KDE apps that duplicate Event Horizon or have no use here, plus
 #   Waydroid and input-remapper.
@@ -181,9 +182,9 @@ for f in /usr/share/applications/*.desktop; do
 done
 
 # Terminal for desktop entries with Terminal=true and xdg-terminal-exec,
-# now that Konsole is gone: kitty in the Hyprland session.
+# now that Konsole is gone: kitty in the Event Horizon session.
 install -d /usr/share/xdg-terminal-exec
-printf 'kitty.desktop\n' > /usr/share/xdg-terminal-exec/hyprland-xdg-terminals.list
+printf 'kitty.desktop\n' > "/usr/share/xdg-terminal-exec/${BAZZITE_HORIZON_DESKTOP:-hyprland}-xdg-terminals.list"
 
 # --- System-wide apps (build_files/apps.list) ----------------------------------
 mapfile -t apps < <(grep -v -E '^[[:space:]]*(#|$)' /ctx/apps.list | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
@@ -239,19 +240,44 @@ done
 # replace core system libraries) so people can layer the extra apps it
 # packages, ProtonPlus included.
 # Edit the .repo file itself: rpm-ostree reads /etc/yum.repos.d only, not
-# dnf5's config-manager overrides.
-terra_repo=$(grep -l '^\[terra\]' /etc/yum.repos.d/*.repo | head -n 1)
-if [[ -z "${terra_repo}" ]]; then
-    echo "trim: no [terra] repository found" >&2
+# dnf5's config-manager overrides. Bazzite 45's terra-release no longer puts
+# its file in /etc/yum.repos.d (dnf5 also reads /usr/share/dnf5/repos.d), so
+# find it wherever the package put it and place an enabled copy, under the
+# same file name, in /etc/yum.repos.d (which dnf5 reads instead of the
+# packaged one).
+find_terra() {
+    local f
+    for f in /etc/yum.repos.d/*.repo /usr/share/dnf5/repos.d/*.repo \
+             $(rpm -ql terra-release 2>/dev/null | grep -E '\.repo$' || true); do
+        [[ -f "${f}" ]] && grep -q '^\[terra\]' "${f}" && { printf '%s\n' "${f}"; return 0; }
+    done
+    return 1
+}
+if ! terra_src=$(find_terra); then
+    echo "::error title=trim-desktop.sh::no [terra] repository found"
+    rpm -ql terra-release >&2 || true
     exit 1
 fi
+terra_repo="/etc/yum.repos.d/$(basename "${terra_src}")"
+echo "trim: Terra repository from ${terra_src}"
 awk '/^\[/{sec=($0=="[terra]")} sec && /^enabled=/{$0="enabled=1"} {print}' \
-    "${terra_repo}" > "${terra_repo}.new"
+    "${terra_src}" > "${terra_repo}.new"
 mv "${terra_repo}.new" "${terra_repo}"
+chmod 644 "${terra_repo}"
 grep -A20 '^\[terra\]' "${terra_repo}" | grep -m1 '^enabled=1'
+# The ISO builder depsolves outside the image, where Terra's local key file
+# doesn't exist (the same fix build.sh applies to the other repo files).
+sed -i -E 's|gpgkey=file:///etc/pki/rpm-gpg/(RPM-GPG-KEY-terra[^[:space:]]+)|gpgkey=https://raw.githubusercontent.com/terrapkg/packages/frawhide/anda/terra/gpg-keys/\1|g' "${terra_repo}"
+# A dnf5 config-manager override (/etc/dnf/repos.override.d) would still
+# win for dnf5; set it on too.
+dnf5 config-manager setopt terra.enabled=1 >/dev/null 2>&1 || true
+dnf5 repo list --enabled 2>/dev/null | grep -qE '^terra[[:space:]]' || {
+    echo "::error title=trim-desktop.sh::Terra is not enabled for dnf5"
+    exit 1
+}
 
-# Default folder handler in the Hyprland session: Strata.
-cat > /usr/share/applications/hyprland-mimeapps.list <<'EOF'
+# Default folder handler in the Event Horizon session: Strata.
+cat > "/usr/share/applications/${BAZZITE_HORIZON_DESKTOP:-hyprland}-mimeapps.list" <<'EOF'
 [Default Applications]
 inode/directory=io.github.lgse.Strata.desktop;
 EOF
@@ -263,8 +289,11 @@ rm -f /usr/share/wayland-sessions/plasma.desktop \
       /usr/share/xsessions/plasmax11.desktop
 
 # --- Checks --------------------------------------------------------------------
-test -f /usr/share/wayland-sessions/event-horizon.desktop
-test -x /usr/bin/Hyprland
+test -f "${BAZZITE_HORIZON_SESSION:-/usr/share/wayland-sessions/event-horizon.desktop}"
+case "${BAZZITE_HORIZON_DESKTOP:-hyprland}" in
+    hyprland) test -x /usr/bin/Hyprland ;;
+    mango) test -x /usr/bin/mango ;;
+esac
 test -x /usr/bin/strata
 # Strata should be the only "Show in folder" handler.
 mapfile -t fm1 < <(grep -l -x 'Name=org.freedesktop.FileManager1' /usr/share/dbus-1/services/*.service)

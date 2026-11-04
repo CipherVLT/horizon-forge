@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Glass mode on Mango (Super+G): windows turn see-through, the wallpaper
+# blurred behind them. Press again to turn it off. Mango sets a window's
+# opacity when it opens, so this applies to windows opened afterwards.
+# (On Hyprland, Super+G is handled in hyprland.lua and toggles the focused
+# window at once.) kitty draws its own glass; Steam games stay solid.
+set -euo pipefail
+
+file="${XDG_CONFIG_HOME:-$HOME/.config}/mango/glass.conf"
+notify() {
+    if command -v notify-send >/dev/null; then
+        notify-send -a "Glass mode" -t 2500 "$@" || true
+    fi
+}
+
+if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    echo "On Hyprland, Super+G is set in ~/.config/hypr/hyprland.lua." >&2
+    exit 1
+fi
+mkdir -p "${file%/*}"
+if [[ -f "${file}" ]] && grep -q '^focused_opacity' "${file}"; then
+    : > "${file}"
+    mmsg dispatch reload_config
+    notify "Glass mode off" "Windows you open from now on are solid."
+else
+    printf '%s\n' "# Written by horizon-glass (Super+G)." \
+        "focused_opacity=0.85" "unfocused_opacity=0.75" > "${file}"
+    mmsg dispatch reload_config
+    notify "Glass mode on" "Applies to windows you open from now on."
+fi

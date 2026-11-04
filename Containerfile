@@ -1,9 +1,12 @@
 # Bazzite Horizon
 # Scaffold from ublue-os/image-template. Event Horizon is compiled in a
 # throwaway stage so the compiler toolchain does not land in the image.
-# BASE_IMAGE selects the Bazzite variant (AMD/Intel or NVIDIA open).
+# BASE_IMAGE selects the Bazzite variant (AMD/Intel or NVIDIA open), DESKTOP
+# the edition: hyprland or mango (one compositor per image, the way Bazzite
+# has separate KDE and GNOME images).
 
 ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite:stable
+ARG DESKTOP=hyprland
 
 FROM scratch AS ctx
 COPY build_files /
@@ -17,12 +20,23 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     bash /ctx/build-event-horizon.sh
 
+# The Super+A app drawer (nwg-drawer), also compiled in a throwaway stage.
+FROM ${BASE_IMAGE} AS drawer-builder
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    bash /ctx/build-nwg-drawer.sh
+
 FROM ${BASE_IMAGE}
 ARG BASE_IMAGE
+ARG DESKTOP
 ENV BAZZITE_HORIZON_BASE=${BASE_IMAGE}
+ENV BAZZITE_HORIZON_DESKTOP=${DESKTOP}
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=bind,from=eh-builder,source=/ehroot,target=/ehroot \
+    --mount=type=bind,from=drawer-builder,source=/drawerroot,target=/drawerroot \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \

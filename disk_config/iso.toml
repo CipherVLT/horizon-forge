@@ -1,6 +1,7 @@
 # bootc-image-builder config for the Anaconda ISO.
 # Build disk images workflow replaces GHCR_IMAGE with the variant you pick
-# (bazzite-horizon or bazzite-horizon-nvidia) before the installer is built.
+# (one of the four editions) and its Fedora stream tag (:45) before the
+# installer is built, so the installed system tracks that tag.
 # `just cook-iso` does the same replacement locally.
 #
 # The disk gets the bootloader Anaconda installs for a bootc payload

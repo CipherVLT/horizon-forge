@@ -22,8 +22,14 @@ case "${1:-region}" in
         shot() { grim -t ppm -; }
         ;;
     screen)
-        # The monitor Hyprland has focused (where the pointer is).
-        out=$(hyprctl monitors -j 2>/dev/null | python3 -c 'import json,sys; print(next((m["name"] for m in json.load(sys.stdin) if m.get("focused")), ""))' 2>/dev/null || true)
+        # The focused monitor (where the pointer is).
+        out=""
+        if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+            out=$(hyprctl monitors -j 2>/dev/null | python3 -c 'import json,sys; print(next((m["name"] for m in json.load(sys.stdin) if m.get("focused")), ""))' 2>/dev/null || true)
+        elif command -v mmsg >/dev/null; then
+            # Mango: `mmsg -g -o` prints "<output> selmon 1" for the focused one.
+            out=$(mmsg -g -o 2>/dev/null | awk '$2 == "selmon" && $3 == 1 { print $1; exit }' || true)
+        fi
         if [[ -n "${out}" ]]; then
             shot() { grim -o "${out}" -t ppm -; }
         else

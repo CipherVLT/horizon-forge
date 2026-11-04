@@ -1,12 +1,12 @@
 # Bazzite Horizon
 
-**[Bazzite](https://bazzite.gg) with a Hyprland desktop and the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon) shell.**
+**[Bazzite](https://bazzite.gg) with the [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon) shell, on Hyprland or Mango.**
 
-Bazzite Horizon reshapes Bazzite into a complete desktop distro for **gamers, creators and coders**:
+Bazzite Horizon is a **gaming-first, lightweight Bazzite with more freedom**, for gamers and creators on **laptops, HTPCs and desktops**:
 
 - **Install apps system-wide, no reboot.** `ujust horizon-install <app>` installs from Fedora or Terra and the app is ready right away. Terra is turned back on, so it finds apps that stock Bazzite only offers as Flatpaks, such as ProtonPlus and Discord.
 - **Full speed while gaming.** Instead of staying on Bazzite's power-saving defaults, **GameMode** switches the CPU to the `performance` governor and power profile while a game runs, then returns to balanced.
-- **No bloat.** The KDE Plasma apps and the handheld-focused Bazzite extras are gone, leaving one desktop: **Event Horizon** on Hyprland.
+- **No bloat.** The KDE Plasma apps and the handheld-focused Bazzite extras are gone, leaving one desktop, **Event Horizon**, on your choice of two tiling compositors (Hyprland or Mango) with the same keyboard shortcuts.
 
 Bazzite's foundation stays: Steam, Gamescope, the BORE-scheduled kernel, drivers and automatic updates.
 
@@ -30,10 +30,16 @@ Bazzite's foundation stays: Steam, Gamescope, the BORE-scheduled kernel, drivers
 
 ## Pick your image
 
-| Your graphics | Image | Based on |
-| --- | --- | --- |
-| **AMD** or **Intel** | `bazzite-horizon` | `bazzite:stable` |
-| **NVIDIA** GTX 16 / RTX 20 series and newer, including laptops with Intel + NVIDIA | `bazzite-horizon-nvidia` | `bazzite-nvidia-open:stable` |
+Like Bazzite's KDE and GNOME editions, each image has one desktop: Event Horizon on **Hyprland** or on **Mango**. Both have the same shell, shortcuts, launcher and colors. Hyprland has more effects and options; Mango is a smaller, lighter compositor.
+
+| Your graphics | Hyprland edition | Mango edition | Based on |
+| --- | --- | --- | --- |
+| **AMD** or **Intel** | `bazzite-horizon` | `bazzite-horizon-mango` | `bazzite:stable` (Bazzite 45, Fedora 45) |
+| **NVIDIA** GTX 16 / RTX 20 series and newer, including laptops with Intel + NVIDIA | `bazzite-horizon-nvidia` | `bazzite-horizon-mango-nvidia` | `bazzite-nvidia-open:stable` (Bazzite 45, Fedora 45) |
+
+An install from the ISO follows the image's **`45` tag**: it gets every Bazzite 45 update, and stays on Bazzite 45 until you switch it yourself, even after a newer Fedora release comes out. To change edition later without reinstalling: `sudo bootc switch ghcr.io/ciphervlt/<image>:45` and reboot. Your home folder stays as it is.
+
+Every build checks Universal Blue's signature on the exact Bazzite image it starts from, and stops if it isn't Fedora 45.
 
 The NVIDIA image uses NVIDIA's **open kernel driver**, which is what current cards (RTX 30, 40 and 50 series) are designed for. It does **not** support GTX 10 series or older.
 
@@ -48,8 +54,23 @@ Bazzite Horizon is installed from its ISO.
 **1. Download the ISO**
 
 1. Open **[Actions → Build disk images](https://github.com/CipherVLT/horizon-forge/actions/workflows/build-disk.yml)** and click the most recent run with a green check.
-2. Under **Artifacts**, download the one for your graphics (about 7 GB): `anaconda-iso-bazzite-horizon-<date>` for AMD/Intel or `anaconda-iso-bazzite-horizon-nvidia-<date>` for NVIDIA. You need to be signed in to GitHub, and artifacts expire after 90 days.
+2. Under **Artifacts**, download the one for your edition and graphics (about 7 GB), for example `anaconda-iso-bazzite-horizon-<date>` (Hyprland, AMD/Intel) or `anaconda-iso-bazzite-horizon-mango-nvidia-<date>` (Mango, NVIDIA). You need to be signed in to GitHub, and artifacts expire after 90 days.
 3. Unzip it. The installer is named after the image and its build date, for example `bazzite-horizon-nvidia-20261024.iso`.
+4. Check it. In the unzipped folder:
+
+   ```bash
+   sha256sum -c bazzite-horizon-nvidia-20261024.iso.sha256
+   ```
+
+   `OK` means the ISO arrived intact. If a `.sha256.sig` file is next to it, also check that the checksum came from this repository (with [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) and this repo's `cosign.pub`):
+
+   ```bash
+   cosign verify-blob --key cosign.pub --insecure-ignore-tlog=true \
+     --signature bazzite-horizon-nvidia-20261024.iso.sha256.sig \
+     bazzite-horizon-nvidia-20261024.iso.sha256
+   ```
+
+   `Verified OK` means it did.
 
 **2. Write it to a USB stick (8 GB or larger)**
 
@@ -77,10 +98,11 @@ sudo dd if=bazzite-horizon-nvidia-20261024.iso of=/dev/sdX bs=4M conv=fsync stat
 
 | | Bazzite (KDE) | Bazzite Horizon |
 | --- | --- | --- |
-| Desktop | KDE Plasma | Event Horizon on Hyprland (Plasma session hidden) |
+| Desktop | KDE Plasma (or GNOME, as a separate image) | Event Horizon on Hyprland (or Mango, as a separate image), same shortcuts in both (Plasma session hidden) |
 | Login screen | Plasma Login | SDDM with the [Pixie](https://github.com/xCaptaiN09/pixie-sddm) theme, Bazzite wallpaper, 12-hour clock |
 | File manager | Dolphin | [Strata](https://github.com/lgse/strata) (GTK 4) |
 | Screenshots | Spectacle | [Satty](https://github.com/gabm/Satty) (<kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>): drag a box, then crop, draw, add text or blur, and Copy, Save or Save as. Saves to `~/Pictures/Screenshots` |
+| Launcher | KRunner, KDE menu | fuzzel (<kbd>Super</kbd> + <kbd>D</kbd>) and an app grid (<kbd>Super</kbd> + <kbd>A</kbd>) |
 | Default apps | Kate, KDE Menu Editor, Steam starting at login, Steam Big Picture Mode menu entries, Waydroid, Lutris, input-remapper, KDE Connect, KDE System Settings, Konsole, KWrite, KFind, KRFB, KRDC, Help Center, KDebugSettings, KWalletManager, Filelight, Emoji Selector, ROM Properties, Fcitx 5 (Chinese/Japanese/Korean input methods), Btrfs Assistant, Cardwire app, the Discourse forum link, Xwayland Video Bridge | KDE apps removed, keeping the components Bazzite needs to run. kitty is the terminal |
 | Added (system packages) | | Firefox, gedit, ProtonPlus, Strata, GameMode, Wine (latest development release from [Kron4ek](https://github.com/Kron4ek/Wine-Builds), NTSync on) |
 | CPU while gaming | `powersave` governor, balanced profile all the time (GameMode removed) | GameMode switches to the `performance` governor and power profile while a game runs, then restores your profile. Use `gamemoderun %command%` in Steam's Launch Options |
@@ -124,10 +146,10 @@ ujust horizon-remove discord              # remove it again
 
 ## First login
 
-1. Log in. **Event Horizon** is the only session on the login screen.
+1. Log in. Your edition's session, **Event Horizon (Hyprland)** or **Event Horizon (Mango)**, is the only one on the login screen.
 2. On the first login you get:
    - **[Strata](https://github.com/lgse/strata)** as the file manager. It also answers "Show in folder" from Firefox, Steam and other apps.
-   - A Hyprland config in `~/.config/hypr/hyprland.lua` (Hyprland's Lua format). It's yours to edit; updates never overwrite it.
+   - Your compositor's config: `~/.config/hypr/hyprland.lua` (Hyprland's Lua format) or `~/.config/mango/config.conf` ([Mango](https://github.com/mangowm/mango)). They're yours to edit, and updates never overwrite your changes.
    - Bazzite's wallpaper. Change it in Event Horizon's settings under **Wallpaper Settings → Wallpaper**.
 3. Your home folder is fully writable. Only the system (`/usr`) is read-only, which is how Bazzite stays reliable.
 
@@ -137,26 +159,41 @@ Tip: in the file manager, press **Ctrl + H** to show hidden files such as `~/.co
 
 ## Keyboard shortcuts
 
+The same in both editions. <kbd>Super</kbd> is the Windows key. <kbd>Super</kbd> + <kbd>H</kbd> lists every shortcut, searchable.
+
 | Keys | Action |
 | --- | --- |
 | <kbd>Super</kbd> + <kbd>Enter</kbd> | Terminal (kitty) |
-| <kbd>Super</kbd> + <kbd>Space</kbd> | App launcher (fuzzel) |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> or <kbd>Super</kbd> + <kbd>Print</kbd> | Screenshot: drag a box, then edit and save it |
-| <kbd>Print</kbd> | Screenshot of the screen under the pointer, then edit and save it |
-| <kbd>Alt</kbd> + <kbd>Print</kbd> | Screenshot of every screen, then edit and save it |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> | Floating terminal in the bottom-right corner |
+| <kbd>Super</kbd> + <kbd>D</kbd> | Search apps (fuzzel) |
+| <kbd>Super</kbd> + <kbd>A</kbd> | All apps in a grid |
+| <kbd>Super</kbd> + <kbd>E</kbd> / <kbd>B</kbd> / <kbd>S</kbd> | Files (Strata) / Firefox / Steam |
+| <kbd>Super</kbd> + <kbd>T</kbd> | Event Horizon settings |
+| <kbd>Super</kbd> + <kbd>V</kbd> | Clipboard history |
+| <kbd>Super</kbd> + <kbd>O</kbd> | Overview |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Wallpaper picker (images in `~/Pictures/Wallpapers` and Bazzite's) |
+| <kbd>Super</kbd> + <kbd>G</kbd> | Glass: see-through windows (Hyprland: the focused window; Mango: windows you open next) |
+| <kbd>Super</kbd> + <kbd>L</kbd> | Lock the screen |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | Power menu: lock, log out, suspend, reboot, power off |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> or <kbd>Super</kbd> + <kbd>M</kbd> | Log out |
 | <kbd>Super</kbd> + <kbd>Q</kbd> | Close window |
-| <kbd>Super</kbd> + <kbd>F</kbd> | Fullscreen |
-| <kbd>Super</kbd> + <kbd>V</kbd> | Toggle floating |
-| <kbd>Super</kbd> + <kbd>P</kbd> | Pseudo-tile |
-| <kbd>Super</kbd> + <kbd>T</kbd> | Toggle split direction |
-| <kbd>Super</kbd> + arrows or <kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> | Move focus |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + arrows | Move window |
+| <kbd>Super</kbd> + <kbd>W</kbd> / <kbd>F</kbd> | Floating / fullscreen |
+| <kbd>Super</kbd> + arrows | Move focus |
+| <kbd>Alt</kbd> + <kbd>Tab</kbd> | Next window |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + arrows | Resize the focused window |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Ctrl</kbd> + arrows | Swap windows |
+| Drag the gap or border between windows | Resize the windows on both sides |
+| <kbd>Super</kbd> + left / right mouse drag | Move / resize window |
 | <kbd>Super</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Go to workspace |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Send window to workspace |
-| <kbd>Super</kbd> + left / right mouse drag | Move / resize window |
-| Drag the gap or border between windows | Resize the windows on both sides |
-| <kbd>Super</kbd> + <kbd>Alt</kbd> + arrows | Resize the focused window |
-| <kbd>Super</kbd> + <kbd>M</kbd> | Log out |
+| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + left / right, or <kbd>Super</kbd> + scroll | Previous / next workspace |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> or <kbd>Super</kbd> + <kbd>Print</kbd> | Screenshot: drag a box, then edit and save it |
+| <kbd>Print</kbd> | Screenshot of the current screen, then edit and save it |
+| <kbd>Alt</kbd> + <kbd>Print</kbd> | Screenshot of every screen, then edit and save it |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload the config |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> | Restart Event Horizon |
+
+Media, volume and brightness keys work too, also on the lock screen.
 
 ---
 
@@ -196,7 +233,8 @@ The [image-template README](https://github.com/ublue-os/image-template#readme) c
 
 - [Bazzite](https://github.com/ublue-os/bazzite) and [Universal Blue](https://universal-blue.org): the base system and the [image template](https://github.com/ublue-os/image-template) this repo started from
 - [Event Horizon](https://github.com/Event-Horizon-desktop-environment/Event-Horizon) by Ryzendrew: the desktop shell (Zig rewrite)
-- [Hyprland](https://hypr.land): the compositor
+- [Hyprland](https://hypr.land) and [Mango](https://github.com/mangowm/mango): the compositors
+- [fuzzel](https://codeberg.org/dnkl/fuzzel), [nwg-drawer](https://github.com/nwg-piotr/nwg-drawer) and [swaylock](https://github.com/swaywm/swaylock): the launcher, app grid and lock screen
 - [Strata](https://github.com/lgse/strata) by lgse: the file manager
 - [dcli-bootc](https://gitlab.com/theblackdon/dcli-bootc) by theblackdon: the profile/modules layout (`profile.yaml`, `modules/`)
 

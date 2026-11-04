@@ -1,0 +1,3 @@
+# sha256 of every earlier default mango/config.conf this image has shipped.
+# An unedited copy in a home folder is swapped for the current default at
+# login. When changing skel/mango/config.conf, add the old file's sha256 here.

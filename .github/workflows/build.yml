@@ -28,10 +28,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # One compositor per image, like Bazzite's KDE and GNOME images.
           - image_name: bazzite-horizon
             base_image: ghcr.io/ublue-os/bazzite:stable
+            desktop: hyprland
           - image_name: bazzite-horizon-nvidia
             base_image: ghcr.io/ublue-os/bazzite-nvidia-open:stable
+            desktop: hyprland
+          - image_name: bazzite-horizon-mango
+            base_image: ghcr.io/ublue-os/bazzite:stable
+            desktop: mango
+          - image_name: bazzite-horizon-mango-nvidia
+            base_image: ghcr.io/ublue-os/bazzite-nvidia-open:stable
+            desktop: mango
 
     permissions:
       contents: read
@@ -72,11 +81,77 @@ jobs:
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
 
+      # Build only on a known, unmodified Bazzite: resolve the tag to one
+      # digest, check Universal Blue's signature on that digest, and require
+      # the Fedora release in build_files/bazzite-fedora.ref. The build then
+      # uses that exact digest, so the image checked is the image built on.
+      #
+      # The signature is checked by hand: Bazzite signs with its key
+      # (build_files/bazzite-cosign.pub, from github.com/ublue-os/bazzite) in
+      # cosign's older format, and `cosign verify` (2.6 and 3.x) rejects that
+      # signature with "expected key signature, not certificate" even though
+      # the key matches. So: fetch the signature, check it against the key
+      # with openssl, and check that the signed payload names this exact
+      # digest in Bazzite's own repository.
+      - name: Install Cosign 2 (fetch the base's signature)
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v2.6.5'
+          install-dir: ${{ runner.temp }}/cosign2
+
+      - name: Verify the Bazzite base
+        id: base
+        env:
+          BASE_TAG: ${{ matrix.base_image }}
+        run: |
+          set -euo pipefail
+          command -v skopeo >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q skopeo; }
+          want=$(grep -v -e '^#' -e '^[[:space:]]*$' build_files/bazzite-fedora.ref | tr -d '[:space:]')
+          digest=$(skopeo inspect --retry-times 3 --no-tags --format '{{.Digest}}' "docker://${BASE_TAG}")
+          repo="${BASE_TAG%:*}"
+          ref="${repo}@${digest}"
+          work=$(mktemp -d)
+          "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" > "${work}/sigs.jsonl"
+          ok=0
+          n=0
+          while IFS= read -r line; do
+            n=$((n + 1))
+            jq -r '.Payload' <<<"${line}" | base64 -d > "${work}/payload.json"
+            jq -r '.Base64Signature' <<<"${line}" | base64 -d > "${work}/sig.bin"
+            if openssl dgst -sha256 -verify build_files/bazzite-cosign.pub \
+                 -signature "${work}/sig.bin" "${work}/payload.json" >/dev/null 2>&1 &&
+               [[ "$(jq -r '.critical.image["docker-manifest-digest"]' "${work}/payload.json")" == "${digest}" ]] &&
+               [[ "$(jq -r '.critical.identity["docker-reference"]' "${work}/payload.json")" == "${repo}" ]]; then
+              ok=1
+              break
+            fi
+          done < "${work}/sigs.jsonl"
+          if (( ! ok )); then
+            echo "::error title=Bazzite base::none of the ${n} signature(s) on ${ref} is Universal Blue's"
+            [[ -s "${work}/payload.json" ]] && jq -c '.critical' "${work}/payload.json" || true
+            exit 1
+          fi
+          echo "Universal Blue's signature checks out for ${ref}"
+          labels=$(skopeo inspect --retry-times 3 --no-tags --format '{{json .Labels}}' "docker://${ref}")
+          version=$(jq -r '."org.opencontainers.image.version" // ""' <<<"${labels}")
+          kernel=$(jq -r '."ostree.linux" // ""' <<<"${labels}")
+          echo "Base ${ref}: version ${version}, kernel ${kernel}"
+          if [[ "${version%%.*}" != "${want}" && "${kernel}" != *".fc${want}."* ]]; then
+            echo "::error title=Bazzite base::${BASE_TAG} is version '${version}' (kernel '${kernel}'), not Fedora ${want}"
+            exit 1
+          fi
+          {
+            echo "### Base"
+            echo "\`${ref}\` (Bazzite ${version}), signature verified"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
+
       # This actually builds the container image
       - name: Build Image
         id: build-image
         env:
-          BASE_IMAGE: ${{ matrix.base_image }}
+          BASE_IMAGE: ${{ steps.base.outputs.ref }}
+          DESKTOP: ${{ matrix.desktop }}
         run: |
           just build \
             ${IMAGE_NAME} \
@@ -100,6 +175,11 @@ jobs:
           alias_tags="$(just generate-build-tags \
                         ${IMAGE_NAME} \
                         ${DEFAULT_TAG})"
+          # The Fedora release stream ("45", "45-<date>"): installs from the
+          # ISO follow this tag, so they stay on Bazzite 45 until switched
+          # by hand, even after :latest moves to a newer Fedora.
+          fedora=$(grep -v -e '^#' -e '^[[:space:]]*$' build_files/bazzite-fedora.ref | tr -d '[:space:]')
+          alias_tags="${alias_tags} ${fedora} ${fedora}-$(date +%Y%m%d)"
 
           echo "Tags for this Action..."
           echo "${alias_tags}"

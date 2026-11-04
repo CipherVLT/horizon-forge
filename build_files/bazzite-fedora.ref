@@ -1,0 +1,5 @@
+# Fedora release the Bazzite base must be on. The build resolves
+# bazzite(-nvidia-open):stable to one digest, checks Universal Blue's
+# signature on it (bazzite-cosign.pub, from github.com/ublue-os/bazzite)
+# and stops unless its version starts with this number.
+45

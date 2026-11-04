@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
-# Final image: Bazzite, plus a Hyprland session, plus the Event Horizon
+# Final image: Bazzite, plus one Event Horizon session (the edition:
+# Hyprland or Mango, from BAZZITE_HORIZON_DESKTOP), plus the Event Horizon
 # binaries staged by build-event-horizon.sh. Plasma's libraries stay
 # installed (Bazzite and the login screen use them); its session is hidden.
 set -eoux pipefail
 # Show the failing line on the GitHub run page (as an annotation).
 trap 'echo "::error title=build.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
+
+desktop="${BAZZITE_HORIZON_DESKTOP:-hyprland}"
+case "${desktop}" in
+    hyprland) session_file=/usr/share/wayland-sessions/event-horizon.desktop ;;
+    mango) session_file=/usr/share/wayland-sessions/event-horizon-mango.desktop ;;
+    *) echo "::error title=build.sh::unknown DESKTOP '${desktop}' (hyprland or mango)"; exit 1 ;;
+esac
+export BAZZITE_HORIZON_DESKTOP="${desktop}" BAZZITE_HORIZON_SESSION="${session_file}"
 
 cp -avf /ctx/system_files/. /
 chmod 0755 /usr/bin/event-horizon-session /usr/bin/EventHorizon /usr/bin/horizon-screenshot
@@ -13,31 +22,10 @@ chmod 0755 /usr/bin/strata /usr/libexec/bazzite-horizon-strata-theme /usr/libexe
 systemctl --global enable bazzite-horizon-strata-theme.path
 
 
-install -d /etc/skel/.config/hypr/eh
-cp /usr/share/event-horizon/skel/hypr/hyprland.lua /etc/skel/.config/hypr/hyprland.lua
-
-if ! dnf5 copr --help >/dev/null 2>&1; then
-    dnf5 install -y dnf5-plugins
-fi
-# copr.fedorainfracloud.org has short outages; retry before failing.
-for attempt in 1 2 3 4 5; do
-    if dnf5 copr enable -y nett00n/hyprland; then
-        break
-    fi
-    if (( attempt == 5 )); then
-        echo "::error title=build.sh::could not reach COPR (nett00n/hyprland) after 5 tries"
-        exit 1
-    fi
-    sleep $(( attempt * 20 ))
-done
-
-
 # Runtime packages only. Build dependencies stayed in the eh-builder stage.
-# Names follow Event Horizon's Fedora.md (F43+) plus the Hyprland session
+# Names follow Event Horizon's Fedora.md (F43+), for both editions.
 dnf5 install -y \
-    hyprland \
     xdg-desktop-portal \
-    xdg-desktop-portal-hyprland \
     xdg-desktop-portal-gtk \
     grim \
     slurp \
@@ -80,21 +68,45 @@ if rpm -q xwaylandvideobridge >/dev/null 2>&1; then
 fi
 rm -f /etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop
 
-# Dialogs Hyprland shows itself (e.g. the ANR "app not responding" prompt).
-dnf5 install -y --skip-unavailable hyprland-guiutils
-rpm -q hyprland-guiutils || echo "WARNING: hyprland-guiutils is not in the copr; Hyprland will warn at login" >&2
+# --- Hyprland edition ------------------------------------------------------------
+# (The Mango edition is set up by install-session.sh.)
+if [[ "${desktop}" == hyprland ]]; then
+    install -d /etc/skel/.config/hypr/eh
+    cp /usr/share/event-horizon/skel/hypr/hyprland.lua /etc/skel/.config/hypr/hyprland.lua
 
-# The seeded config is Lua (hyprland.lua): Hyprland 0.57 reads only Lua,
-# and 0.56 is the first release that can. Refuse anything older.
-hypr_ver=$(rpm -q --qf '%{VERSION}' hyprland)
-if [[ "$(printf '%s\n0.56\n' "${hypr_ver}" | sort -V | head -n 1)" != "0.56" ]]; then
-    echo "::error title=build.sh::Hyprland ${hypr_ver} can't read the Lua config (needs 0.56 or newer)"
-    exit 1
+    if ! dnf5 copr --help >/dev/null 2>&1; then
+        dnf5 install -y dnf5-plugins
+    fi
+    # copr.fedorainfracloud.org has short outages; retry before failing.
+    for attempt in 1 2 3 4 5; do
+        if dnf5 copr enable -y nett00n/hyprland; then
+            break
+        fi
+        if (( attempt == 5 )); then
+            echo "::error title=build.sh::could not reach COPR (nett00n/hyprland) after 5 tries"
+            exit 1
+        fi
+        sleep $(( attempt * 20 ))
+    done
+
+    dnf5 install -y hyprland xdg-desktop-portal-hyprland
+
+    # Dialogs Hyprland shows itself (e.g. the ANR "app not responding" prompt).
+    dnf5 install -y --skip-unavailable hyprland-guiutils
+    rpm -q hyprland-guiutils || echo "WARNING: hyprland-guiutils is not in the copr; Hyprland will warn at login" >&2
+
+    # The seeded config is Lua (hyprland.lua): Hyprland 0.57 reads only Lua,
+    # and 0.56 is the first release that can. Refuse anything older.
+    hypr_ver=$(rpm -q --qf '%{VERSION}' hyprland)
+    if [[ "$(printf '%s\n0.56\n' "${hypr_ver}" | sort -V | head -n 1)" != "0.56" ]]; then
+        echo "::error title=build.sh::Hyprland ${hypr_ver} can't read the Lua config (needs 0.56 or newer)"
+        exit 1
+    fi
+    echo "Hyprland ${hypr_ver}"
+
+    dnf5 copr disable -y nett00n/hyprland || true
+    rm -f /etc/yum.repos.d/*nett00n*hyprland*.repo
 fi
-echo "Hyprland ${hypr_ver}"
-
-dnf5 copr disable -y nett00n/hyprland || true
-rm -f /etc/yum.repos.d/*nett00n*hyprland*.repo
 
 if [[ ! -d /ehroot/usr ]]; then
     echo "eh-builder did not stage /ehroot" >&2
@@ -102,20 +114,21 @@ if [[ ! -d /ehroot/usr ]]; then
 fi
 cp -a /ehroot/. /
 
+bash /ctx/install-session.sh
 bash /ctx/install-strata.sh
 
 install -d /usr/share/bazzite-horizon
 printf '%s\n' "${BAZZITE_HORIZON_BASE:-unset}" > /usr/share/bazzite-horizon/base-image
 cp /ctx/event-horizon.ref /usr/share/bazzite-horizon/event-horizon.ref
 
+BOOT_TITLE="Bazzite Horizon"
+if [[ "${desktop}" == mango ]]; then
+    BOOT_TITLE+=" Mango"
+fi
 case "${BAZZITE_HORIZON_BASE}" in
-    *nvidia*)
-        BOOT_TITLE="Bazzite Horizon NVIDIA"
-        ;;
-    *)
-        BOOT_TITLE="Bazzite Horizon"
-        ;;
+    *nvidia*) BOOT_TITLE+=" NVIDIA" ;;
 esac
+printf '%s\n' "${desktop}" > /usr/share/bazzite-horizon/desktop
 printf '%s\n' "$BOOT_TITLE" > /usr/share/bazzite-horizon/boot-title
 if [[ -f /usr/lib/os-release ]]; then
     if grep -q '^BOOTLOADER_NAME=' /usr/lib/os-release; then
@@ -139,7 +152,7 @@ test -x /usr/bin/strata
 test -x /usr/libexec/strata/strata
 test -x /usr/bin/python3
 test -f /usr/share/wallpapers/convergence.png
-test -f /usr/share/wayland-sessions/event-horizon.desktop
+test -f "${session_file}"
 test -f /usr/share/event-horizon/skel/hypr/hyprland.lua
 # The current default must not be listed as an "older default", or every
 # login would keep re-copying it over itself (harmless) and a forgotten list
@@ -202,14 +215,14 @@ done
 # only fail or duplicate work under Hyprland: vmware-user (VMware guests),
 # pam_kwallet_init (KWallet is not running in this session) and the KDE
 # UnifiedPush distributor. Hide them from the Hyprland session only; the
-# Plasma session still starts them.
+# Plasma session still starts them. Same for the Mango session.
 for f in /etc/xdg/autostart/*.desktop; do
     [[ -f "$f" ]] || continue
     grep -Eq '^Exec=.*(vmware-user|pam_kwallet_init|kunifiedpush)' "$f" || continue
     if grep -q '^NotShowIn=' "$f"; then
-        sed -i 's/^NotShowIn=/NotShowIn=Hyprland;/' "$f"
+        sed -i 's/^NotShowIn=/NotShowIn=Hyprland;mango;/' "$f"
     else
-        sed -i '/^\[Desktop Entry\]/a NotShowIn=Hyprland;' "$f"
+        sed -i '/^\[Desktop Entry\]/a NotShowIn=Hyprland;mango;' "$f"
     fi
     echo "autostart: not started under Hyprland: $f"
 done
@@ -259,5 +272,7 @@ fi
 if command -v just >/dev/null 2>&1 && [[ -f /usr/share/ublue-os/justfile ]]; then
     just --justfile /usr/share/ublue-os/justfile --summary >/dev/null
 fi
+
+bash /ctx/check-sessions.sh
 
 dnf5 clean all
