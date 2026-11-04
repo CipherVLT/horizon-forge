@@ -108,9 +108,11 @@ jobs:
             echo "::error title=Bazzite base::Universal Blue's signature does not check out for ${ref}"
             # Show who did sign it (certificate identity and issuer), if anyone.
             "${RUNNER_TEMP}/cosign2/cosign" tree "${ref}" || true
-            "${RUNNER_TEMP}/cosign2/cosign" verify --certificate-identity-regexp '.*' \
-              --certificate-oidc-issuer-regexp '.*' "${ref}" 2>&1 |
-              jq -r '.[] | .optional | {Subject, Issuer, githubWorkflowRepository, githubWorkflowRef}' 2>/dev/null || true
+            "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" 2>/dev/null |
+              jq -r 'select(.Cert != null) | .Cert' | head -c 20000 |
+              openssl x509 -noout -subject -issuer -ext subjectAltName 2>&1 || true
+            "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" 2>/dev/null |
+              jq -c '{has_cert: (.Cert != null), bundle: (.Bundle != null), keys: keys}' || true
             exit 1
           fi
           labels=$(skopeo inspect --retry-times 3 --no-tags --format '{{json .Labels}}' "docker://${ref}")
