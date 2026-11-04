@@ -85,10 +85,15 @@ jobs:
       # digest, check Universal Blue's signature on that digest, and require
       # the Fedora release in build_files/bazzite-fedora.ref. The build then
       # uses that exact digest, so the image checked is the image built on.
-      # Bazzite signs with its key in cosign's older signature format, which
-      # cosign 3's `verify` rejects ("expected key signature, not
-      # certificate"); cosign 2.6 (what Bazzite itself signs with) reads it.
-      - name: Install Cosign 2 (verify the base)
+      #
+      # The signature is checked by hand: Bazzite signs with its key
+      # (build_files/bazzite-cosign.pub, from github.com/ublue-os/bazzite) in
+      # cosign's older format, and `cosign verify` (2.6 and 3.x) rejects that
+      # signature with "expected key signature, not certificate" even though
+      # the key matches. So: fetch the signature, check it against the key
+      # with openssl, and check that the signed payload names this exact
+      # digest in Bazzite's own repository.
+      - name: Install Cosign 2 (fetch the base's signature)
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: 'v2.6.5'
@@ -103,20 +108,30 @@ jobs:
           command -v skopeo >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q skopeo; }
           want=$(grep -v -e '^#' -e '^[[:space:]]*$' build_files/bazzite-fedora.ref | tr -d '[:space:]')
           digest=$(skopeo inspect --retry-times 3 --no-tags --format '{{.Digest}}' "docker://${BASE_TAG}")
-          ref="${BASE_TAG%:*}@${digest}"
-          if ! "${RUNNER_TEMP}/cosign2/cosign" verify --key build_files/bazzite-cosign.pub "${ref}" > /tmp/base-verify.json; then
-            echo "::error title=Bazzite base::Universal Blue's signature does not check out for ${ref}"
-            # Show who did sign it (certificate identity and issuer), if anyone.
-            "${RUNNER_TEMP}/cosign2/cosign" tree "${ref}" || true
-            "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" 2>/dev/null |
-              jq -r 'select(.Cert != null) | .Cert' | head -c 20000 |
-              openssl x509 -noout -subject -issuer -ext subjectAltName 2>&1 || true
-            "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" 2>/dev/null |
-              jq -r '.Bundle.Payload.body' | base64 -d |
-              jq -r '.kind, (.spec.signature.publicKey.content // .spec.signature.publicKey // "" | tostring)' |
-              { read -r kind; read -r key; echo "rekor kind: ${kind}"; base64 -d <<<"${key}" 2>/dev/null || echo "${key}"; } || true
+          repo="${BASE_TAG%:*}"
+          ref="${repo}@${digest}"
+          work=$(mktemp -d)
+          "${RUNNER_TEMP}/cosign2/cosign" download signature "${ref}" > "${work}/sigs.jsonl"
+          ok=0
+          n=0
+          while IFS= read -r line; do
+            n=$((n + 1))
+            jq -r '.Payload' <<<"${line}" | base64 -d > "${work}/payload.json"
+            jq -r '.Base64Signature' <<<"${line}" | base64 -d > "${work}/sig.bin"
+            if openssl dgst -sha256 -verify build_files/bazzite-cosign.pub \
+                 -signature "${work}/sig.bin" "${work}/payload.json" >/dev/null 2>&1 &&
+               [[ "$(jq -r '.critical.image["docker-manifest-digest"]' "${work}/payload.json")" == "${digest}" ]] &&
+               [[ "$(jq -r '.critical.identity["docker-reference"]' "${work}/payload.json")" == "${repo}" ]]; then
+              ok=1
+              break
+            fi
+          done < "${work}/sigs.jsonl"
+          if (( ! ok )); then
+            echo "::error title=Bazzite base::none of the ${n} signature(s) on ${ref} is Universal Blue's"
+            [[ -s "${work}/payload.json" ]] && jq -c '.critical' "${work}/payload.json" || true
             exit 1
           fi
+          echo "Universal Blue's signature checks out for ${ref}"
           labels=$(skopeo inspect --retry-times 3 --no-tags --format '{{json .Labels}}' "docker://${ref}")
           version=$(jq -r '."org.opencontainers.image.version" // ""' <<<"${labels}")
           kernel=$(jq -r '."ostree.linux" // ""' <<<"${labels}")
