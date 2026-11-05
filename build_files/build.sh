@@ -228,10 +228,11 @@ for f in /etc/xdg/autostart/*.desktop; do
     fi
     echo "autostart: not started under Hyprland: $f"
 done
-for f in /etc/xdg/autostart/org.kde.foreground-booster.desktop; do
-    [[ -f "$f" ]] || continue
-    grep -q '^NotShowIn=Hyprland;mango;' "$f" || { echo "autostart: $f is still started under Hyprland/Mango" >&2; exit 1; }
-done
+booster=/etc/xdg/autostart/org.kde.foreground-booster.desktop
+if [[ -f "${booster}" ]] && ! grep -q '^NotShowIn=Hyprland;mango;' "${booster}"; then
+    echo "autostart: ${booster} is still started under Hyprland/Mango" >&2
+    exit 1
+fi
 
 # Fedora 45 keeps repo files in /usr/share/dnf5/repos.d; rpm-ostree and the
 # ISO builder only read /etc/yum.repos.d (see sync-repos.sh).
