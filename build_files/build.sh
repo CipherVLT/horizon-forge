@@ -213,12 +213,14 @@ done
 # Event Horizon runs the XDG autostart entries (honouring OnlyShowIn and
 # NotShowIn) like any desktop. A few that Bazzite ships for KDE or for VMs
 # only fail or duplicate work under Hyprland: vmware-user (VMware guests),
-# pam_kwallet_init (KWallet is not running in this session) and the KDE
-# UnifiedPush distributor. Hide them from the Hyprland session only; the
+# pam_kwallet_init (KWallet is not running in this session), the KDE
+# UnifiedPush distributor and Plasma's foreground booster (it follows the
+# focused window through KWin, so elsewhere it only sits in memory; the
+# dmemcg-booster services that protect a game's VRAM keep running). Hide them from the Hyprland session only; the
 # Plasma session still starts them. Same for the Mango session.
 for f in /etc/xdg/autostart/*.desktop; do
     [[ -f "$f" ]] || continue
-    grep -Eq '^Exec=.*(vmware-user|pam_kwallet_init|kunifiedpush)' "$f" || continue
+    grep -Eq '^Exec=.*(vmware-user|pam_kwallet_init|kunifiedpush|foreground_booster)' "$f" || continue
     if grep -q '^NotShowIn=' "$f"; then
         sed -i 's/^NotShowIn=/NotShowIn=Hyprland;mango;/' "$f"
     else
@@ -226,6 +228,11 @@ for f in /etc/xdg/autostart/*.desktop; do
     fi
     echo "autostart: not started under Hyprland: $f"
 done
+booster=/etc/xdg/autostart/org.kde.foreground-booster.desktop
+if [[ -f "${booster}" ]] && ! grep -q '^NotShowIn=Hyprland;mango;' "${booster}"; then
+    echo "autostart: ${booster} is still started under Hyprland/Mango" >&2
+    exit 1
+fi
 
 # Fedora 45 keeps repo files in /usr/share/dnf5/repos.d; rpm-ostree and the
 # ISO builder only read /etc/yum.repos.d (see sync-repos.sh).

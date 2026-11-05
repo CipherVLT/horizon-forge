@@ -81,6 +81,40 @@ esac
 # Fcitx 5's login autostart, if the package left it behind.
 rm -f /etc/xdg/autostart/org.fcitx.Fcitx5.desktop
 
+# --- Printing and scanning ---------------------------------------------------
+# CUPS, its printer drivers and SANE scanning. Removed with a normal rpm erase
+# (no --nodeps): if anything we keep still needs one of these, the build stops
+# here instead of shipping it broken. The shared libraries stay (cups-libs,
+# libcupsfilters, cups-filesystem: GTK, Qt, Samba and Ghostscript link
+# them), so apps simply show no printers. fprintd is fingerprint login, not
+# printing, and stays. To print or scan again:
+#   rpm-ostree install cups cups-filters hplip gutenprint-cups sane-backends
+print_scan=(
+    cups cups-browsed cups-client cups-filters cups-filters-driverless
+    cups-ipptool libppd braille-printer-app ipp-usb
+    gutenprint gutenprint-cups gutenprint-libs hplip hplip-common hplip-libs
+    dymo-cups-drivers printer-driver-brlaser ptouch-driver splix c2esp uld
+    terra-bluez-cups python3-cups system-config-printer-libs
+    system-config-printer-udev plasma-print-manager plasma-print-manager-libs
+    sane-backends sane-backends-libs sane-backends-drivers-cameras
+    sane-backends-drivers-scanners sane-airscan libsane-airscan libsane-hpaio
+)
+present=()
+for p in "${print_scan[@]}"; do
+    rpm -q "$p" >/dev/null 2>&1 && present+=("$p")
+done
+if (( ${#present[@]} )); then
+    echo "trim: removing printing and scanning: ${present[*]}"
+    rpm --erase "${present[@]}"
+fi
+rm -f /etc/systemd/system/*.wants/cups.* /etc/systemd/system/*.wants/cups-browsed.* \
+      /etc/systemd/system/*.wants/ipp-usb.*
+if left=$(rpm -qa --qf '%{NAME}\n' | grep -xE 'cups|cups-browsed|hplip|sane-backends|ipp-usb'); then
+    echo "trim: printing/scanning still installed: ${left}" >&2
+    exit 1
+fi
+rpm -q cups-libs fprintd >/dev/null || { echo "trim: cups-libs or fprintd went missing" >&2; exit 1; }
+
 # Leftover enable links for removed services.
 rm -f /etc/systemd/system/*.wants/input-remapper*.service \
       /etc/systemd/system/*.wants/waydroid-container.service
