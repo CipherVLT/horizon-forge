@@ -1,0 +1,43 @@
+name: Audit image (temporary)
+on:
+  push:
+    branches: [tmp/upstream-patch-check]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [bazzite-horizon, bazzite-horizon-nvidia, bazzite-horizon-mango, bazzite-horizon-mango-nvidia]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: 'v2.6.5'
+      - name: Verify with cosign.pub
+        run: |
+          ref=ghcr.io/ciphervlt/${{ matrix.image }}:45
+          # Wait (up to ~80 min) for the signed build from main to be published.
+          for i in $(seq 1 160); do
+            digest=$(skopeo inspect --no-tags --format '{{.Digest}}' "docker://${ref}")
+            if cosign download signature "${ref%:*}@${digest}" >/dev/null 2>&1; then break; fi
+            sleep 30
+          done
+          echo "digest ${digest}"
+          if cosign verify --key cosign.pub "${ref%:*}@${digest}" >/dev/null 2>err.txt; then
+            echo "VERIFIED (cosign verify)"; exit 0
+          fi
+          cat err.txt
+          cosign download signature "${ref%:*}@${digest}" > sigs.jsonl
+          n=0
+          while read -r line; do
+            jq -r .Payload <<<"$line" | base64 -d > payload.json
+            jq -r .Base64Signature <<<"$line" | base64 -d > sig.bin
+            if openssl dgst -sha256 -verify cosign.pub -signature sig.bin payload.json >/dev/null; then
+              jq -e --arg d "$digest" '.critical.image["docker-manifest-digest"] == $d' payload.json && n=$((n+1))
+            fi
+          done < sigs.jsonl
+          [[ $n -gt 0 ]] && echo "VERIFIED (payload)" || { echo "NOT VERIFIED"; exit 1; }
