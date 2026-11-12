@@ -455,15 +455,18 @@ Rectangle {
                             smooth: true
                             visible: false
 
-                            Component.onCompleted: {
-                                var s = Qt.resolvedUrl("assets/avatar.jpg");
-                                if (typeof userModel !== "undefined" && userModel.count > 0) {
-                                    var icon = userModel.data(userModel.index(container.userIndex, 0), Qt.UserRole + 3);
-                                    if (icon && icon.toString().match(/\.(jpg|jpeg|png|bmp|webp|svg)$/i)) {
-                                        s = icon.toString();
-                                    }
-                                }
-                                source = s;
+                            // SDDM's IconRole (Qt.UserRole + 4) is a file:// URL SDDM has
+                            // already checked exists: FacesDir/<user>.face.icon, then
+                            // ~/.face.icon, then AccountsService's icon (no extension).
+                            // Without one it is the generic FacesDir/.face.icon (or the
+                            // theme's faces/.face.icon); skip that so the letter avatar shows.
+                            // No image, no source: nothing to load, nothing to warn about.
+                            source: {
+                                if (typeof userModel === "undefined" || userModel.count <= 0) return "";
+                                var icon = userModel.data(userModel.index(container.userIndex, 0), Qt.UserRole + 4);
+                                var s = icon ? icon.toString() : "";
+                                if (s === "" || s.endsWith("/faces/.face.icon")) return "";
+                                return s;
                             }
 
                             onStatusChanged: {
