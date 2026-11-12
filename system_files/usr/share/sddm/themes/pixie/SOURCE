@@ -5,5 +5,9 @@ Vendored from commit 1e1a863761f742e8d509d569382b17c112e29fdc.
 Changes for Bazzite Horizon:
 - theme.conf: Bazzite wallpaper as the background, 12-hour clock.
 - assets/avatar.jpg (the author's picture) and assets/background.jpg are not
-  included. Users without ~/.face.icon get the first letter of their name.
+  included. Users without a face icon get the first letter of their name.
+- Main.qml: the avatar reads SDDM's IconRole (Qt.UserRole + 4; upstream reads
+  + 3, HomeDirRole, so it always fell back to the missing assets/avatar.jpg).
+  It shows FacesDir/<user>.face.icon, ~/.face.icon or the AccountsService
+  icon, as SDDM picks them, and skips SDDM's generic faces/.face.icon.
 - Not included: install.sh, flake.*, screenshots.
