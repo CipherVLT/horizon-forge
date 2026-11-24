@@ -232,9 +232,9 @@ p.write_text(s)
 print("horizon-forge: idle Wi-Fi lists networks in the dock card")
 PY
 
-# Local patch: the dock's Trash button did nothing. Its slot has no click or
-# menu action in the dock (only the taskbar's trash widget has one). Left
-# click opens the Trash (Strata), right click asks to empty it; both go
+# Local patch: left click on the dock's Trash did nothing. Upstream has the
+# right-click menu (Open Trash / Empty Trash, since 875dded), but the click
+# dispatch still has no .trash case. Left click opens the Trash (Strata)
 # through /usr/libexec/bazzite-horizon-trash.
 python3 - <<'PY'
 import pathlib, sys
@@ -245,10 +245,10 @@ click = """                    .overview => {
                         return;
                     },
 """
-menu = """            .tray => blk: {
-                self.buildTrayMenu(s) catch |e| {"""
-if s.count(click) != 1 or s.count(menu) != 1:
-    sys.exit(f"horizon-forge trash patch: dock click/menu dispatch changed upstream in {p}")
+if s.count(click) != 1:
+    sys.exit(f"horizon-forge trash patch: dock click dispatch changed upstream in {p}")
+if ".trash => {" in s:
+    sys.exit(f"horizon-forge trash patch: upstream handles the Trash click now; drop this patch")
 s = s.replace(click, """                    .trash => {
                         // horizon-forge: open the Trash.
                         if (!app_launch.launchExec(self.app.gpa, self.app.io, "/usr/libexec/bazzite-horizon-trash open")) {
@@ -257,24 +257,18 @@ s = s.replace(click, """                    .trash => {
                         return;
                     },
 """ + click)
-s = s.replace(menu, """            .trash => blk: {
-                // horizon-forge: right click asks to empty the Trash.
-                _ = app_launch.launchExec(self.app.gpa, self.app.io, "/usr/libexec/bazzite-horizon-trash empty");
-                break :blk false;
-            },
-""" + menu)
 p.write_text(s)
-print("horizon-forge: dock Trash button opens / empties the Trash")
+print("horizon-forge: dock Trash left click opens the Trash")
 PY
 
 # Updates page on an image system: upstream installs the release with
 # `pkexec dnf install`, which cannot work on a read-only /usr. With this
-# patch (written to send upstream), a bootc/ostree system stages the newest
-# image with `pkexec bootc upgrade` and the page offers a reboot. Checking
+# patch (written to send upstream), an ostree system stages the newest image
+# with `pkexec rpm-ostree upgrade` and the page offers a reboot. Checking
 # GitHub releases and showing the notes work as upstream.
 git apply --check /ctx/patches/eh-updater-image-systems.patch
 git apply /ctx/patches/eh-updater-image-systems.patch
-echo "horizon-forge: Updates page installs on image systems with pkexec bootc upgrade"
+echo "horizon-forge: Updates page installs on image systems with pkexec rpm-ostree upgrade"
 
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
