@@ -1,7 +1,8 @@
 description: >
-  ryzendew Event Horizon (Zig rewrite), built from the pinned commit in
-  build_files/event-horizon.ref with Zig 0.16 for x86-64-v2 (portable,
-  not tuned for the build machine), toolchain kept out of the final image.
+  ryzendew Event Horizon (Zig rewrite), built from the newest upstream
+  release (build_files/event-horizon.ref: release) with the Zig version that
+  release asks for, for x86-64-v2 (portable, not tuned for the build
+  machine), toolchain kept out of the final image.
 
 depends:
   - hyprland-session

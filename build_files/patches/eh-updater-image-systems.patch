@@ -1,0 +1,302 @@
+diff --git a/src/ux/settings2/updater_service.zig b/src/ux/settings2/updater_service.zig
+index 38a0e4c..0ec0de0 100644
+--- a/src/ux/settings2/updater_service.zig
++++ b/src/ux/settings2/updater_service.zig
+@@ -17,6 +17,13 @@
+ //!     install  → `pkexec` + the distro's package manager
+ //!     restart  → a detached shell stops the supervisor and starts it again
+ //!
++//! Image-based systems (Fedora Atomic, Bazzite and other ostree systems)
++//! have a read-only /usr, so no package manager can install the release
++//! there. On those the check is the same, but install stages the newest
++//! system image with `pkexec rpm-ostree upgrade` and restart reboots into
++//! it. rpm-ostree rather than `bootc upgrade`: bootc refuses to upgrade a
++//! system with layered packages, rpm-ostree upgrades it and keeps them.
++//!
+ //! Results are POD structs with fixed-size buffers. A slot behind one mutex
+ //! that the UI reads once never needs an allocator, and cannot be double
+ //! freed by a confused caller.
+@@ -51,6 +58,8 @@ pub const PackageKind = enum {
+     arch,
+     deb,
+     rpm,
++    /// An ostree system: Event Horizon ships inside the system image.
++    image,
+ 
+     /// The word the page's footer and status text use.
+     pub fn label(self: PackageKind) []const u8 {
+@@ -58,6 +67,7 @@ pub const PackageKind = enum {
+             .arch => "Arch package (.pkg.tar.zst)",
+             .deb => "Debian package (.deb)",
+             .rpm => "RPM package (.rpm)",
++            .image => "System image (rpm-ostree)",
+         };
+     }
+ 
+@@ -66,6 +76,7 @@ pub const PackageKind = enum {
+             .arch => "pacman",
+             .deb => "apt",
+             .rpm => "dnf",
++            .image => "rpm-ostree",
+         };
+     }
+ };
+@@ -171,8 +182,13 @@ pub fn packageKindFromOsRelease(text: []const u8) PackageKind {
+ }
+ 
+ /// Read `/etc/os-release` (falling back to `/usr/lib/os-release`) and map it.
++/// A booted ostree system (`/run/ostree-booted`) updates as an image.
+ pub fn detectKind(io: std.Io, alloc: std.mem.Allocator) PackageKind {
+     const cwd = std.Io.Dir.cwd();
++    if (cwd.readFileAlloc(io, "/run/ostree-booted", alloc, .limited(4096))) |marker| {
++        alloc.free(marker);
++        return .image;
++    } else |_| {}
+     const paths = [_][]const u8{ "/etc/os-release", "/usr/lib/os-release" };
+     for (paths) |p| {
+         if (cwd.readFileAlloc(io, p, alloc, .limited(1 << 16))) |text| {
+@@ -324,9 +340,23 @@ pub fn installArgv(kind: PackageKind, path: []const u8, buf: *[8][]const u8) []c
+             buf[4] = path;
+             return buf[0..5];
+         },
++        .image => {
++            // Stage the newest system image; it applies at the next boot.
++            buf[0] = "pkexec";
++            buf[1] = "rpm-ostree";
++            buf[2] = "upgrade";
++            return buf[0..3];
++        },
+     }
+ }
+ 
++/// `rpm-ostree upgrade` exits 0 when the image is already the newest one,
++/// so its output tells "staged an update" from "nothing newer".
++pub fn imageUnchanged(out: []const u8) bool {
++    return std.mem.indexOf(u8, out, "No upgrade available") != null or
++        std.mem.indexOf(u8, out, "No updates available") != null;
++}
++
+ // Results
+ 
+ pub const CheckResult = struct {
+@@ -371,6 +401,8 @@ pub const DownloadResult = struct {
+ 
+ pub const InstallResult = struct {
+     ok: bool = false,
++    /// Image systems: authenticated fine, but no newer image to stage.
++    nothing_new: bool = false,
+     err: [msg_cap]u8 = undefined,
+     err_len: u16 = 0,
+ 
+@@ -764,7 +796,7 @@ pub const Service = struct {
+     fn doInstall(self: *Service, job: Job) InstallResult {
+         var r: InstallResult = .{};
+         const path = job.path[0..job.path_len];
+-        if (path.len == 0) {
++        if (path.len == 0 and job.pkg != .image) {
+             setMsg(&r.err, &r.err_len, "No package to install");
+             return r;
+         }
+@@ -781,6 +813,11 @@ pub const Service = struct {
+         defer self.alloc.free(res.stdout);
+         defer self.alloc.free(res.stderr);
+         if (res.term == .exited and res.term.exited == 0) {
++            if (job.pkg == .image and (imageUnchanged(res.stdout) or imageUnchanged(res.stderr))) {
++                r.nothing_new = true;
++                setMsg(&r.err, &r.err_len, "No newer system image yet. This release arrives with the next image build; try again later.");
++                return r;
++            }
+             r.ok = true;
+             return r;
+         }
+@@ -893,6 +930,18 @@ pub fn restartShell(io: std.Io) bool {
+     return true;
+ }
+ 
++/// Image systems: the staged image applies at boot, so restart reboots.
++pub fn rebootSystem(io: std.Io) bool {
++    const argv = [_][]const u8{ "systemctl", "reboot" };
++    _ = std.process.spawn(io, .{
++        .argv = &argv,
++        .stdin = .ignore,
++        .stdout = .ignore,
++        .stderr = .ignore,
++    }) catch return false;
++    return true;
++}
++
+ /// Open the release page in the user's browser.
+ pub fn openReleasesPage(io: std.Io) bool {
+     const argv = [_][]const u8{ "xdg-open", releases_page };
+@@ -983,6 +1032,26 @@ test "updater-service: release JSON picks the matching asset" {
+     try t.expect(parsed.asset.?.kind == .deb);
+ }
+ 
++test "updater-service: image systems stage with rpm-ostree and spot no-op upgrades" {
++    const t = std.testing;
++    var buf: [8][]const u8 = undefined;
++    const argv = installArgv(.image, "", &buf);
++    try t.expectEqual(@as(usize, 3), argv.len);
++    try t.expectEqualStrings("pkexec", argv[0]);
++    try t.expectEqualStrings("rpm-ostree", argv[1]);
++    try t.expectEqualStrings("upgrade", argv[2]);
++    try t.expect(imageUnchanged("Pulling manifest: ostree-image-signed:docker://ghcr.io/x/y:45\nNo upgrade available.\n"));
++    try t.expect(imageUnchanged("No updates available.\n"));
++    try t.expect(!imageUnchanged("Staging deployment... done\nChanges queued for next boot. Run \"systemctl reboot\" to start a reboot\n"));
++    // A release has no image asset, so nothing is offered for download.
++    const doc =
++        \\{"tag_name":"0.2.0","body":"n","assets":[
++        \\ {"name":"event-horizon-de-0.2.0-1.x86_64.rpm","browser_download_url":"https://ex/rpm","size":30,"digest":"sha256:22"}]}
++    ;
++    const got = try parseRelease(t.allocator, doc, .image);
++    try t.expect(got.asset == null);
++}
++
+ test "updater-service: install argv names the right package manager" {
+     const t = std.testing;
+     var buf: [8][]const u8 = undefined;
+diff --git a/src/ux/settings2/updater_tab.zig b/src/ux/settings2/updater_tab.zig
+index 5d23fef..a083d66 100644
+--- a/src/ux/settings2/updater_tab.zig
++++ b/src/ux/settings2/updater_tab.zig
+@@ -362,7 +362,12 @@ pub const Page = struct {
+             }
+         }
+         if (self.svc.takeInstall()) |ir| {
+-            if (!ir.ok) {
++            if (ir.nothing_new) {
++                // Image systems: no newer image yet. Stay on the offer and
++                // say why, rather than reporting a failure.
++                setStr(&self.err_buf, &self.err_len, ir.errorMsg());
++                self.state = .available;
++            } else if (!ir.ok) {
+                 setStr(&self.err_buf, &self.err_len, ir.errorMsg());
+                 self.state = .failed;
+             } else {
+@@ -412,6 +417,14 @@ pub const Page = struct {
+         self.total = self.asset_size;
+     }
+ 
++    /// Image systems: there is no package to download; stage the newest
++    /// system image straight away (`pkexec rpm-ostree upgrade`).
++    fn startImageUpdate(self: *Page) void {
++        if (!self.svc.installAsync(.image, "")) return;
++        self.state = .installing;
++        self.err_len = 0;
++    }
++
+     fn startInstall(self: *Page) void {
+         if (self.pkg_path_len == 0) return;
+         if (!self.svc.installAsync(self.kind, self.pkg_path[0..self.pkg_path_len])) return;
+@@ -426,7 +439,11 @@ pub const Page = struct {
+                 return .repaint;
+             },
+             .available => {
+-                self.startDownload();
++                if (self.kind == .image) {
++                    self.startImageUpdate();
++                } else {
++                    self.startDownload();
++                }
+                 return .repaint;
+             },
+             .ready => {
+@@ -1123,7 +1140,7 @@ fn titleText(self: *Page, buf: []u8) []const u8 {
+         .downloading => fmt(buf, "Downloading {s}", .{self.latest()}),
+         .ready => "Ready to install",
+         .installing => fmt(buf, "Installing {s}", .{self.latest()}),
+-        .restart => "Update installed",
++        .restart => if (self.kind == .image) "Update staged" else "Update installed",
+         .failed => "Couldn't check for updates",
+     };
+ }
+@@ -1133,11 +1150,20 @@ fn subText(self: *Page, buf: []u8) []const u8 {
+         .never => "Event Horizon hasn't looked for updates yet.",
+         .checking => "This only takes a moment.",
+         .uptodate => "You're on the latest release.",
+-        .available => fmt(buf, "Event Horizon {s} is ready to download.", .{self.latest()}),
++        .available => if (self.kind == .image)
++            fmt(buf, "Event Horizon {s} is out. Updating installs the newest system image.", .{self.latest()})
++        else
++            fmt(buf, "Event Horizon {s} is ready to download.", .{self.latest()}),
+         .downloading => "You can keep using your desktop while this runs.",
+         .ready => "Download verified. Installing needs your password.",
+-        .installing => "Waiting for authentication, then replacing files.",
+-        .restart => fmt(buf, "Restart the shell to finish applying {s}.", .{self.latest()}),
++        .installing => if (self.kind == .image)
++            "Waiting for authentication, then downloading the new image."
++        else
++            "Waiting for authentication, then replacing files.",
++        .restart => if (self.kind == .image)
++            "Reboot to start the new system image."
++        else
++            fmt(buf, "Restart the shell to finish applying {s}.", .{self.latest()}),
+         .failed => "Event Horizon couldn't reach GitHub.",
+     };
+ }
+@@ -1148,7 +1174,7 @@ fn versionText(self: *Page, buf: []u8) []const u8 {
+             version.string,
+             self.latest(),
+         }),
+-        .restart => fmt(buf, "{s} installed", .{self.latest()}),
++        .restart => if (self.kind == .image) "New image staged" else fmt(buf, "{s} installed", .{self.latest()}),
+         else => version.string,
+     };
+ }
+@@ -1162,7 +1188,7 @@ fn metaText(self: *Page, buf: []u8) []const u8 {
+         .downloading => fmt(buf, "{d:.1} MB", .{@as(f64, @floatFromInt(self.total)) / (1024.0 * 1024.0)}),
+         .ready => "Checksum verified",
+         .installing => "Don't power off",
+-        .restart => "Takes about 2 seconds",
++        .restart => if (self.kind == .image) "Applies at next boot" else "Takes about 2 seconds",
+         .failed => "Last checked: never",
+     };
+ }
+@@ -1172,13 +1198,13 @@ fn primaryLabel(self: *Page, buf: []u8) []const u8 {
+         .never => "Check now",
+         .checking => "Checking...",
+         .uptodate => "Check again",
+-        .available => fmt(buf, "Download \u{00B7} {d:.1} MB", .{
++        .available => if (self.kind == .image) "Update system" else fmt(buf, "Download \u{00B7} {d:.1} MB", .{
+             @as(f64, @floatFromInt(self.asset_size)) / (1024.0 * 1024.0),
+         }),
+         .downloading => "Downloading...",
+         .ready => "Install update",
+         .installing => "Installing...",
+-        .restart => "Restart shell",
++        .restart => if (self.kind == .image) "Reboot now" else "Restart shell",
+         .failed => "Try again",
+     };
+ }
+@@ -1189,8 +1215,12 @@ fn primaryGhost(self: *const Page) bool {
+ 
+ fn noteText(self: *const Page) []const u8 {
+     return switch (self.state) {
++        .available => if (self.err_len > 0) self.errorMsg() else "",
+         .ready => "You'll be asked to authenticate with pkexec. Your session stays open.",
+-        .restart => "Open windows are kept. Only the panels and lock screen restart.",
++        .restart => if (self.kind == .image)
++            "Nothing changes until you reboot. Save your work first."
++        else
++            "Open windows are kept. Only the panels and lock screen restart.",
+         .failed => self.errorMsg(),
+         else => "",
+     };
+diff --git a/src/ux/settings2/window.zig b/src/ux/settings2/window.zig
+index 8dff31d..e7b6de0 100755
+--- a/src/ux/settings2/window.zig
++++ b/src/ux/settings2/window.zig
+@@ -1236,7 +1236,12 @@ pub const Win = struct {
+                 self.flushUpdaterTab();
+             },
+             .restart => {
+-                if (!updater_service.restartShell(self.io)) {
++                if (self.upd.kind == .image) {
++                    // The staged system image applies at boot.
++                    if (!updater_service.rebootSystem(self.io)) {
++                        logz.err("settings: reboot failed", .{});
++                    }
++                } else if (!updater_service.restartShell(self.io)) {
+                     logz.err("settings: restart shell failed", .{});
+                 }
+             },
