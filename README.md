@@ -209,6 +209,12 @@ rpm-ostree upgrade    # system image only
 
 Use `rpm-ostree upgrade` rather than `sudo bootc upgrade`: once you've installed apps with `ujust horizon-install`, `horizon-asus` or `rpm-ostree install`, bootc refuses to update ("Deployment contains local rpm-ostree modifications"). rpm-ostree updates the system and keeps your apps.
 
+### Event Horizon updates
+
+Bazzite Horizon follows [Event Horizon's releases](https://github.com/Event-Horizon-desktop-environment/Event-Horizon/releases): every daily image build uses the newest release, so a new Event Horizon version reaches you within about a day.
+
+You can also update from the shell: **Settings → Updates**. **Check now** asks GitHub for the newest release and shows its notes. If it's newer than yours, **Update system** runs `pkexec rpm-ostree upgrade` (you enter your password) to download the newest image, and **Reboot now** starts it. If the release is out but today's image hasn't been built yet, the page says so; try again later. Auto-check repeats the check while the Updates page is open.
+
 If an update ever misbehaves, pick the previous entry in the boot menu, or run `sudo bootc rollback` and reboot.
 
 `ujust horizon-info` shows which image and Event Horizon version you are running.

@@ -4,7 +4,13 @@
 #
 # Upstream: https://github.com/Event-Horizon-desktop-environment/Event-Horizon
 # (MIT). The earlier C++/Meson repository (Event-Horizon-Shell) is gone; the
-# Zig tree replaced it. event-horizon.ref pins the upstream commit.
+# Zig tree replaced it.
+#
+# event-horizon.ref says which Event Horizon to build: `release` (the newest
+# upstream release tag, so the daily build picks up each release within a
+# day and the in-app Updates page can install it as an image update), or a
+# tag or commit to pin one. The tag and commit actually built are recorded
+# in /usr/share/bazzite-horizon/event-horizon.ref (`ujust horizon-info`).
 #
 # Upstream's build.sh auto-detects the build CPU's x86-64 level, which would
 # tune the binaries for a GitHub runner. This script pins x86-64-v2 instead
@@ -14,15 +20,46 @@ set -eoux pipefail
 trap 'echo "::error title=build-event-horizon.sh::line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 EH_REPO="${EH_REPO:-https://github.com/Event-Horizon-desktop-environment/Event-Horizon.git}"
-EH_REF="$(tr -d '[:space:]' < /ctx/event-horizon.ref)"
+EH_PIN="$(tr -d '[:space:]' < /ctx/event-horizon.ref)"
 EH_CPU=x86_64_v2
 # ReleaseFast like upstream's build.sh. ReleaseSafe also builds (see the
 # _FORTIFY_SOURCE note below) and is handy for chasing crashes.
 EH_OPTIMIZE=ReleaseFast
 
-# Zig toolchain: the release tarball from ziglang.org, verified against the
-# Zig Software Foundation's minisign key before use.
-ZIG_VERSION=0.16.0
+src=/eh-src
+rm -rf "${src}"
+mkdir -p "${src}"
+git -C "${src}" init
+git -C "${src}" remote add origin "${EH_REPO}"
+if [[ "${EH_PIN}" == release ]]; then
+    # Release tags are plain x.y.z (0.1.7); take the highest.
+    EH_REF=$(git -C "${src}" ls-remote --tags --refs origin |
+        awk -F/ '{print $3}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+    [[ -n "${EH_REF}" ]] || { echo "no Event Horizon release tags found" >&2; exit 1; }
+else
+    EH_REF="${EH_PIN}"
+fi
+git -C "${src}" fetch --depth 1 origin "${EH_REF}"
+git -C "${src}" checkout --detach FETCH_HEAD
+git -C "${src}" submodule update --init --recursive --depth 1
+EH_COMMIT=$(git -C "${src}" rev-parse HEAD)
+
+cd "${src}"
+# The Updates page compares src/version.zig with the newest GitHub release,
+# so a release build must carry that release's version.
+eh_version=$(sed -n 's/^pub const string = "\(.*\)";/\1/p' src/version.zig)
+echo "Event Horizon ${EH_REF} (${EH_COMMIT}), version.zig ${eh_version}"
+if [[ "${EH_PIN}" == release && "${eh_version}" != "${EH_REF}" ]]; then
+    echo "release ${EH_REF} says version ${eh_version} in src/version.zig" >&2
+    exit 1
+fi
+
+# Zig toolchain: the version the checked-out tree asks for
+# (build.zig.zon's minimum_zig_version), so a release that moves to a newer
+# Zig builds without a change here. The ziglang.org tarball is verified
+# against the Zig Software Foundation's minisign key before use.
+ZIG_VERSION=$(sed -n 's/.*\.minimum_zig_version *= *"\([0-9][0-9.]*\)".*/\1/p' build.zig.zon | head -n1)
+[[ -n "${ZIG_VERSION}" ]] || { echo "could not read minimum_zig_version from build.zig.zon" >&2; exit 1; }
 ZIG_PUBKEY='RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U'
 
 dnf5 install -y \
@@ -38,7 +75,8 @@ dnf5 install -y \
     pango-devel \
     librsvg2-devel \
     libwebp-devel \
-    pipewire-devel
+    pipewire-devel \
+    pam-devel
 
 zig_dir=/tmp/zig
 mkdir -p "${zig_dir}"
@@ -59,16 +97,6 @@ ZIG="${zig_dir}/zig"
 "${ZIG}" version
 export ZIG_GLOBAL_CACHE_DIR=/tmp/zig-global-cache ZIG_LOCAL_CACHE_DIR=/tmp/zig-local-cache
 
-src=/eh-src
-rm -rf "${src}"
-mkdir -p "${src}"
-git -C "${src}" init
-git -C "${src}" remote add origin "${EH_REPO}"
-git -C "${src}" fetch --depth 1 origin "${EH_REF}"
-git -C "${src}" checkout --detach FETCH_HEAD
-git -C "${src}" submodule update --init --recursive --depth 1
-
-cd "${src}"
 # Safe builds turn on glibc's _FORTIFY_SOURCE wrappers, and Zig's C
 # translation cannot handle some of them (gethostname: "expected c_int,
 # found bool"). Undefine it inside every @cImport for non-fast builds; Zig's
@@ -103,51 +131,6 @@ for path, n in want.items():
         sys.exit(f"horizon-forge popup patch: expected {n} x '{target}' in {p}, found {s.count(target)}")
     p.write_text(s.replace(target, "self.surface.setKeyboardInteractivity(2); // horizon-forge: on-demand, not exclusive"))
 print("horizon-forge: pear + control-center popups use on-demand keyboard focus")
-PY
-
-# Local patch: a component whose Wayland connection died (the compositor
-# disconnected it, e.g. for a protocol error) kept running with no surfaces:
-# the dock vanished for good because the supervisor still saw it alive, and
-# the reason was lost with stderr. On a fatal display error, log the errno and
-# the offending interface#id to ~/EH-logs, then exit so the supervisor
-# respawns it. Upstream's polkit agent already does this for itself.
-python3 - <<'PY'
-import pathlib, sys
-p = pathlib.Path("src/wl/connection.zig")
-s = p.read_text()
-old = """    pub fn flush(self: *Connection) bool {
-        if (self.display) |d| return wl.wl_display_flush(d) >= 0;
-        return false;
-    }
-"""
-new = """    pub fn flush(self: *Connection) bool {
-        if (self.display) |d| {
-            if (wl.wl_display_flush(d) >= 0) return true;
-            // horizon-forge: fatal display error -> log why, exit for respawn.
-            const code = wl.wl_display_get_error(d);
-            if (code != 0) {
-                var iface: [*c]const wl.struct_wl_interface = null;
-                var id: u32 = 0;
-                const perr = wl.wl_display_get_protocol_error(d, &iface, &id);
-                const name: []const u8 = if (iface != null and iface.*.name != null)
-                    std.mem.span(@as([*:0]const u8, @ptrCast(iface.*.name)))
-                else
-                    "?";
-                @import("../logz.zig").err(
-                    "display connection lost: errno={d} protocol_error={d} on {s}#{d}; exiting for supervisor respawn",
-                    .{ code, perr, name, id },
-                );
-                std.process.exit(1);
-            }
-            return false;
-        }
-        return false;
-    }
-"""
-if s.count(old) != 1:
-    sys.exit(f"horizon-forge disconnect patch: Connection.flush changed upstream in {p}")
-p.write_text(s.replace(old, new))
-print("horizon-forge: components log and exit on a lost Wayland connection")
 PY
 
 # Local patch: Event Horizon reads the keyboard itself (evdev, under
@@ -200,9 +183,8 @@ PY
 # connected. live_network.query() skips every NetworkManager device that is
 # not activated, the access-point list included, so on Ethernet (or with
 # nothing connected) the dock's network card had no network to join. List
-# the access points of an idle Wi-Fi adapter too. And the settings app's
-# "Scan for networks" button has no action yet: open nmtui's network picker
-# in kitty until Event Horizon builds that page.
+# the access points of an idle Wi-Fi adapter too. (The settings app has its
+# own Network page with scanning since 0.1.5.)
 python3 - <<'PY'
 import pathlib, sys
 p = pathlib.Path("src/desktop_shell/controlcenter/live_network.zig")
@@ -247,24 +229,7 @@ fn appendIdleWifiAps(conn: *conn_mod.Conn, alloc: std.mem.Allocator, q: *Queried
 """
 s = s.replace(fn_anchor, helper + fn_anchor)
 p.write_text(s)
-
-p = pathlib.Path("src/ux/settings2/window.zig")
-s = p.read_text()
-btn = """            .button => |label| {
-                if (std.mem.eql(u8, label, "Test notification")) {"""
-if s.count(btn) != 1:
-    sys.exit(f"horizon-forge wifi patch: settings button handler changed upstream in {p}")
-s = s.replace(btn, """            .button => |label| {
-                // horizon-forge: no Wi-Fi page yet; open NetworkManager's picker.
-                if (std.mem.eql(u8, label, "Scan for networks")) {
-                    @import("../../services/autostart.zig").spawnDetached(self.io, &.{ "kitty", "--title", "Wi-Fi networks", "nmtui", "connect" }) catch |e| {
-                        logz.log("settings: could not open nmtui: {s}", .{@errorName(e)});
-                    };
-                    return;
-                }
-                if (std.mem.eql(u8, label, "Test notification")) {""")
-p.write_text(s)
-print("horizon-forge: idle Wi-Fi lists networks; settings Scan opens nmtui")
+print("horizon-forge: idle Wi-Fi lists networks in the dock card")
 PY
 
 # Local patch: the dock's Trash button did nothing. Its slot has no click or
@@ -302,12 +267,36 @@ p.write_text(s)
 print("horizon-forge: dock Trash button opens / empties the Trash")
 PY
 
+# Updates page on an image system: upstream installs the release with
+# `pkexec dnf install`, which cannot work on a read-only /usr. With this
+# patch (written to send upstream), a bootc/ostree system stages the newest
+# image with `pkexec bootc upgrade` and the page offers a reboot. Checking
+# GitHub releases and showing the notes work as upstream.
+git apply --check /ctx/patches/eh-updater-image-systems.patch
+git apply /ctx/patches/eh-updater-image-systems.patch
+echo "horizon-forge: Updates page installs on image systems with pkexec bootc upgrade"
+
 # Compiler errors as GitHub annotations, so they show on the run page.
 if ! "${ZIG}" build "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" 2>/tmp/zig-build.err; then
     cat /tmp/zig-build.err >&2
     grep -E 'error:|note:' /tmp/zig-build.err | head -n 12 | sed 's/^/::error title=zig build::/'
     exit 1
 fi
+
+# The updater's unit tests (release parsing, version compare, install
+# commands, the image path), on their own so the run stays short.
+cat > src/hf_updater_tests.zig <<'ZIG'
+test {
+    _ = @import("ux/settings2/updater_service.zig");
+    _ = @import("ux/settings2/updater_tab.zig");
+}
+ZIG
+if ! "${ZIG}" build test "-Doptimize=${EH_OPTIMIZE}" "-Dcpu=${EH_CPU}" -Dtest-root=src/hf_updater_tests.zig 2>/tmp/zig-test.err; then
+    cat /tmp/zig-test.err >&2
+    grep -E 'error:|FAIL|expected' /tmp/zig-test.err | head -n 12 | sed 's/^/::error title=updater tests::/'
+    exit 1
+fi
+echo "updater unit tests passed"
 
 # Install exactly the binaries upstream's build.sh installs, read from it so
 # a new component is picked up automatically. The supervisor (horizon)
@@ -322,4 +311,6 @@ done
 "${ZIG}" build install-icons --prefix /ehroot/usr/share
 
 test -x /ehroot/usr/bin/horizon
-echo "Staged Event Horizon ${EH_REF}: ${binaries[*]}"
+install -d /ehroot/usr/share/bazzite-horizon
+printf '%s %s\n' "${EH_REF}" "${EH_COMMIT}" > /ehroot/usr/share/bazzite-horizon/event-horizon.ref
+echo "Staged Event Horizon ${EH_REF} (${EH_COMMIT}): ${binaries[*]}"

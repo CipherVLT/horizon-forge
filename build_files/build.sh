@@ -119,7 +119,8 @@ bash /ctx/install-strata.sh
 
 install -d /usr/share/bazzite-horizon
 printf '%s\n' "${BAZZITE_HORIZON_BASE:-unset}" > /usr/share/bazzite-horizon/base-image
-cp /ctx/event-horizon.ref /usr/share/bazzite-horizon/event-horizon.ref
+# eh-builder records the Event Horizon tag and commit it built.
+test -s /usr/share/bazzite-horizon/event-horizon.ref
 
 BOOT_TITLE="Bazzite Horizon"
 if [[ "${desktop}" == mango ]]; then
